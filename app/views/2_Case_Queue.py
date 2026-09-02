@@ -11,7 +11,7 @@ import streamlit as st  # noqa: E402
 from _i18n import t  # noqa: E402
 from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner  # noqa: E402
 
-frames = page_setup("Case Queue", "📋")
+frames = page_setup()
 cases = frames["marts.fct_cases"]
 
 st.title(t("Case Queue"))

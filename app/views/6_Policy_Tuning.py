@@ -26,7 +26,7 @@ from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner 
 from riskops.config import get_settings  # noqa: E402
 from riskops.eval.robustness import policy_mix, sweep_thresholds  # noqa: E402
 
-frames = page_setup("Policy Tuning", "🎚️")
+frames = page_setup()
 settings = get_settings()
 
 transactions = frames["core.transactions"]

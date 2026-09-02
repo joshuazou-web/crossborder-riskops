@@ -105,6 +105,7 @@ runs the demo with no server, while the analytics stay real SQL rather than pand
 | `audit/chain.py` | Hash chaining and verification | Returns three states (`verified`/`broken`/`unverifiable`), because "predates chaining" and "was tampered with" are opposite findings |
 | `eval/runner.py` | Every quoted number | Nothing is typed by hand into a README |
 | `app/_i18n.py` | English and Chinese | The English source text *is* the key, so a missing translation degrades to correct English rather than to a placeholder, and the page code stays readable on its own |
+| `app/Home.py` | Entry point and navigation | Streamlit builds a `pages/` sidebar from *filenames*, which cannot be translated. `st.navigation` takes an explicit title per page, so the sidebar reads the same language as the screen. The views moved to `app/views/` and `url_path` is pinned, so a pasted link keeps working |
 
 ---
 
@@ -122,7 +123,10 @@ The interface translates. Three things deliberately do not:
   wonder why half the case detail is still English.
 
 `tests/test_i18n.py` parses each page's AST, collects every literal passed to `t()`, and fails if a
-wrapped string has no translation or if a translation exists that no page uses any more. That second
+wrapped string has no translation or if a translation exists that no page uses any more. It also
+reads the `PAGES` table out of the router and checks every sidebar entry separately, because the
+navigation is the first thing anyone sees and the one place a half-translated interface reads as
+broken rather than pragmatic. That second
 check is the one that matters over time: it catches the case where a caption is reworded and the
 Chinese quietly stops appearing.
 

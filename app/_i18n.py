@@ -65,6 +65,16 @@ ZH: dict[str, str] = {
     "Decisions taken on this screen are written to the local warehouse and are part of the demo.":
         "本页面上做出的决策会写入本地数据仓库,属于演示的一部分。",
 
+    # --- navigation ------------------------------------------------------
+    # Passed to st.Page in app/Home.py. These are the sidebar entries, which the
+    # filename-based `pages/` directory could not translate at all.
+    "Transaction Explorer": "交易浏览器",
+    "Case Queue": "案件队列",
+    "Case Detail": "案件详情",
+    "Audit Log": "审计日志",
+    "Evaluation": "评测",
+    "Policy Tuning": "策略调参",
+
     # --- Overview -------------------------------------------------------
     "Overview": "总览",
     "One synthetic cross-border payment estate, the risk signals it produced, and the case "
@@ -136,7 +146,6 @@ ZH: dict[str, str] = {
         "规则引擎读取这些记录而非重算金额,因此一条差异永远只有一种含义。",
 
     # --- Transaction Explorer -------------------------------------------
-    "Transaction Explorer": "交易浏览器",
     "Every payment, its lifecycle, its money and the signals it produced.":
         "每一笔支付、它的生命周期、资金流向,以及它产生的信号。",
     "Search": "搜索",
@@ -167,7 +176,6 @@ ZH: dict[str, str] = {
         "这笔交易收到了状态机拒绝的事件。它们已被隔离且从未进入账本——下方金额仍然正确。",
 
     # --- Case Queue ------------------------------------------------------
-    "Case Queue": "案件队列",
     "Every case the deterministic policy could not close on its own, with the reason it exists "
     "and the clock it is running against.":
         "确定性策略无法自行关闭的每一个案件,附带它存在的原因和它正在跑的时钟。",
@@ -210,7 +218,6 @@ ZH: dict[str, str] = {
         "没人记录的错误拦截,就是没人会修的错误拦截。",
 
     # --- Case Detail -----------------------------------------------------
-    "Case Detail": "案件详情",
     "Case": "案件",
     "Risk score": "风险分",
     "Signals": "信号数",
@@ -280,7 +287,6 @@ ZH: dict[str, str] = {
         "该钱包或商户其他交易上的自由文本匹配到了注入模式,在任何提问之前就已对模型屏蔽。",
 
     # --- Audit Log -------------------------------------------------------
-    "Audit Log": "审计日志",
     "Append-only and hash-chained. Nothing here is ever updated or deleted.":
         "仅追加、哈希链式。这里的任何内容都不会被修改或删除。",
     "Audit entries": "审计条目",
@@ -312,7 +318,6 @@ ZH: dict[str, str] = {
         "没有版本的指标是不可复现的。",
 
     # --- Evaluation ------------------------------------------------------
-    "Evaluation": "评测",
     "Evaluation and AI boundaries": "评测与 AI 边界",
     "Read this before reading any number": "在看任何数字之前先读这个",
     "Risk detection": "风险检测",
@@ -379,7 +384,6 @@ ZH: dict[str, str] = {
         "因此按「事件」计的检出率高于这里按「单笔交易」计的数字。",
 
     # --- Policy Tuning ---------------------------------------------------
-    "Policy Tuning": "策略调参",
     "Where the two automatic thresholds sit, and what each setting costs.":
         "两个自动化阈值设在哪里,以及每种设定的代价。",
     "Auto-release below": "低于此值自动放行",

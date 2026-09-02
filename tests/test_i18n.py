@@ -22,7 +22,7 @@ if str(APP) not in sys.path:
 
 from _i18n import DEFAULT_LANGUAGE, LANGUAGES, ZH  # noqa: E402
 
-PAGE_FILES = sorted([APP / "Home.py", APP / "_shared.py", *(APP / "pages").glob("*.py")])
+PAGE_FILES = sorted([APP / "Home.py", APP / "_shared.py", *(APP / "views").glob("*.py")])
 
 
 def _t_arguments(path: Path) -> list[str]:
@@ -79,10 +79,65 @@ class TestTable:
                 )
 
 
+def _navigation_titles() -> list[str]:
+    """The sidebar entries, read out of the PAGES table in the router.
+
+    These are the strings Streamlit's `pages/` directory could not translate at
+    all, because it builds the sidebar from filenames. They are worth checking
+    separately: the navigation is the first thing anyone sees, and it is the one
+    place a half-translated interface reads as broken rather than pragmatic.
+    """
+    tree = ast.parse((APP / "Home.py").read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.List)):
+            continue
+        if not any(getattr(target, "id", "") == "PAGES" for target in node.targets):
+            continue
+        titles = []
+        for entry in node.value.elts:
+            if isinstance(entry, ast.Tuple) and len(entry.elts) >= 2:
+                title = entry.elts[1]
+                if isinstance(title, ast.Constant) and isinstance(title.value, str):
+                    titles.append(title.value)
+        return titles
+    return []
+
+
+NAVIGATION_TITLES = _navigation_titles()
+
+
+class TestNavigation:
+    def test_the_router_declares_every_page(self):
+        # One view file, one navigation entry. A view nobody can navigate to is
+        # dead, and an entry with no view behind it is a broken link.
+        view_files = sorted((APP / "views").glob("*.py"))
+        assert len(NAVIGATION_TITLES) == len(view_files), (
+            f"{len(NAVIGATION_TITLES)} navigation entries against "
+            f"{len(view_files)} view files"
+        )
+
+    @pytest.mark.parametrize("title", NAVIGATION_TITLES)
+    def test_every_sidebar_entry_is_translated(self, title):
+        assert title in ZH, (
+            f"the sidebar entry {title!r} has no Chinese translation, so the navigation "
+            "stays English on an otherwise Chinese screen"
+        )
+
+    def test_url_paths_are_not_translated(self):
+        # A link somebody pasted has to keep working whatever language they were
+        # reading in, so the route never changes with the interface.
+        text = (APP / "Home.py").read_text(encoding="utf-8")
+        for route in ("Transaction_Explorer", "Case_Queue", "Case_Detail",
+                      "Audit_Log", "Evaluation", "Policy_Tuning"):
+            assert f'"{route}"' in text, f"route {route} is missing from the router"
+
+
 class TestCoverage:
     def test_every_page_uses_the_translation_helper(self):
         for path in PAGE_FILES:
-            if path.name in ("_i18n.py",):
+            # The router passes `t(title)` a variable rather than a literal, so
+            # its coverage is checked by TestNavigation instead.
+            if path.name in ("_i18n.py", "Home.py"):
                 continue
             assert ALL_ARGUMENTS[path.name], f"{path.name} has no translated strings"
 
@@ -109,9 +164,10 @@ class TestCoverage:
             "Open only", "All cases", "Breached SLA", "Appealed",
             # Used inside _i18n.py itself, which is not a page.
             "Language",
-            # Streamlit derives the sidebar entry from the filename, so the page
-            # names are translated only where they appear in body text.
-            "Evaluation",
+            # Navigation titles, passed to `st.Page` in the router rather than
+            # rendered directly by a page.
+            "Overview", "Transaction Explorer", "Case Queue", "Case Detail",
+            "Audit Log", "Evaluation", "Policy Tuning",
         }
         stale = sorted(set(ZH) - used - indirect)
         assert not stale, (

@@ -38,7 +38,7 @@ from riskops.review.workflow import (  # noqa: E402
 )
 from riskops.taxonomy import HUMAN_ACTIONS, REASON_CODE  # noqa: E402
 
-frames = page_setup("Case Detail", "🗂️")
+frames = page_setup()
 cases = frames["marts.fct_cases"]
 signals = frames["risk.signals"]
 breaks = frames["core.reconciliation_breaks"]

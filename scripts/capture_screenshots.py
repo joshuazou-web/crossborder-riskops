@@ -25,7 +25,7 @@ VIEWPORT = {"width": 1600, "height": 1200}
 
 # (filename, path, settle seconds, optional case to preselect)
 PAGES: list[tuple[str, str, int]] = [
-    ("01-overview.png", "/", 7),
+    ("01-overview.png", "/Overview", 7),
     ("02-case-queue.png", "/Case_Queue", 7),
     ("03-case-detail.png", "/Case_Detail", 9),
     ("04-audit-log.png", "/Audit_Log", 8),

@@ -14,7 +14,7 @@ from riskops.audit.log import AuditLog  # noqa: E402
 from riskops.config import get_settings  # noqa: E402
 from riskops.db import session  # noqa: E402
 
-frames = page_setup("Audit Log", "🔐")
+frames = page_setup()
 entries = frames["audit.audit_log"]
 decisions = frames["audit.decisions"]
 invocations = frames["audit.ai_invocations"]

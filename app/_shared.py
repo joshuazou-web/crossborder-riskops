@@ -110,9 +110,13 @@ def load_tables() -> dict[str, pd.DataFrame]:
     return frames
 
 
-def page_setup(title: str, icon: str = "🛡️") -> dict[str, pd.DataFrame]:
-    st.set_page_config(page_title=f"{title} · CrossBorder RiskOps", page_icon=icon,
-                       layout="wide", initial_sidebar_state="expanded")
+def page_setup() -> dict[str, pd.DataFrame]:
+    """Chrome every view needs: styles, data, sidebar, language toggle.
+
+    `st.set_page_config` is deliberately absent - `app/Home.py` owns it, because
+    `st.navigation` requires it to be called once in the entry script and raises
+    if a view calls it again.
+    """
     _inject_css()
     frames = load_tables()
     if not frames or frames.get("marts.fct_transactions", pd.DataFrame()).empty:

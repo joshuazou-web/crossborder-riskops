@@ -11,7 +11,7 @@ import streamlit as st  # noqa: E402
 from _i18n import t  # noqa: E402
 from _shared import money, page_setup, pill, synthetic_banner  # noqa: E402
 
-frames = page_setup("Transaction Explorer", "🔎")
+frames = page_setup()
 transactions = frames["marts.fct_transactions"]
 signals = frames["risk.signals"]
 events = frames["core.payment_events"]
