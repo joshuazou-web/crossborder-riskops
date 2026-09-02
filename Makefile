@@ -13,8 +13,9 @@ help:          ## Show this help
 install:       ## Install runtime dependencies
 	$(PY) -m pip install -r requirements.txt
 
-install-dev:   ## Install runtime + development dependencies
+install-dev:   ## Install runtime + development dependencies, and the package itself
 	$(PY) -m pip install -r requirements-dev.txt
+	$(PY) -m pip install -e .
 
 demo:          ## Build the entire demo from scratch (~90s, no API key needed)
 	$(PY) -m riskops demo

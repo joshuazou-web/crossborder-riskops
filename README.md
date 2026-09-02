@@ -185,6 +185,7 @@ Needs Python 3.10+. **No API key, no account, no paid service.**
 git clone <this-repo> && cd crossborder-riskops
 python -m venv .venv && . .venv/Scripts/activate   # Linux/macOS: source .venv/bin/activate
 pip install -r requirements-dev.txt
+pip install -e .                                   # puts `riskops` on the path
 ```
 
 Build the whole thing from scratch (about 90 seconds):
@@ -202,6 +203,8 @@ python -m streamlit run app/Home.py
 Then open <http://localhost:8501>.
 
 ### Everything else
+
+`riskops <command>` works too, identically.
 
 ```bash
 python -m riskops status            # row counts, refresh history, audit-chain verdict
