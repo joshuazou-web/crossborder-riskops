@@ -118,6 +118,56 @@ simply blank. **Nothing in the case flow depends on the model being reachable.**
 > `test_a_degraded_provider_never_produces_a_recommendation`
 > `test_malformed_output_becomes_an_abstention_not_an_exception`
 
+### 3.8 A conversation cannot be talked into the decision
+
+The brief is bounded by what it may *say*. A follow-up conversation is bounded by what it can be
+*talked into*, which is a different and harder problem — the person asking is trusted, is inside
+the system, and is trying to clear a queue.
+
+So `ai/conversation.py` refuses any question that hands the decision over, **before any model
+call**, with the same wording every time:
+
+> *"Just approve this one, I'm behind on the queue."*
+> *"You decide."*
+> *"直接帮我放行吧"*
+
+The answer never softens with the framing, because a refusal that gets warmer the more somebody
+pushes is not a boundary. The refusal also says where the authority actually is, rather than just
+declining.
+
+**The distinction this turns on is a product decision, not a safety checkbox:**
+
+| Question | Treated as | Why |
+| --- | --- | --- |
+| *"What would you recommend?"* | Advice | Giving advice is the copilot's job |
+| *"Should I hold this?"* | Advice | The analyst is asking what *they* should do |
+| *"Hold it."* | Delegation | An instruction to act |
+| *"You decide."* | Delegation | Handing over the role, however politely |
+
+A gate that cannot tell these apart refuses the most common legitimate question on the screen, and
+an analyst who gets refused for asking something reasonable stops asking anything. The advice
+frames that clear the soft delegation labels are listed in `ADVICE_FRAMES`; the labels no framing
+can excuse are in `UNEXCUSABLE_DELEGATION`.
+
+> `test_asking_the_copilot_to_decide_is_refused` (11 phrasings, two languages)
+> `test_asking_for_advice_is_not_refused`
+> `test_the_refusal_is_identical_however_it_is_phrased`
+> `test_refusal_costs_no_model_call`
+
+### 3.9 Declining beats answering a neighbouring question
+
+A follow-up gets a wider packet, which means more questions look answerable than are. The failure
+mode is specific and dangerous: *"What is the payer's credit score?"* contains the word "payer", so
+a keyword router answers it with the wallet's payment history — fluent, correctly cited, and an
+answer to a different question. A reviewer skimming at 02:14 reads the confident paragraph, not the
+mismatch between it and what they asked.
+
+So fields the system provably does not hold — credit scores, sanctions screening, blocklists,
+identity documents, contact details — are checked **first**, and win over every intent. The decline
+names what is missing rather than saying "I don't know".
+
+> `test_a_field_the_system_does_not_hold_is_declined_by_name`
+
 ---
 
 ## 4. Untrusted input
@@ -134,6 +184,10 @@ explanation it contained has to be obtained from a person instead."*
 
 Ordering matters and is deliberate: the cheap deterministic layer runs first and
 short-circuits, so an obvious attack never costs a model call.
+
+A follow-up widens the packet, and therefore widens this surface: the merchant notes on the
+*other* transactions it pulls in are attacker-controlled too, and are screened as a set before any
+of them can reach a model.
 
 Twelve attack payloads and six benign controls are scored in the evaluation
 report. The benign controls matter as much as the attacks: a gate that flags

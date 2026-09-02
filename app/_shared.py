@@ -9,13 +9,26 @@ Two rules shape this module.
    and the queue disagree about what "breached" means, both numbers are worthless.
 
 2. **Never hold the warehouse open.** Tables are read into memory and the file
-   connection closes immediately, so `python -m riskops refresh` can still write
-   while somebody has the dashboard open.
+   connection closes immediately.
+
+3. **One connection configuration, process-wide.** Every connection this app
+   opens is read-write, including the ones that only read. That looks wrong
+   until you hit it: DuckDB refuses a read-write connection while a read-only
+   connection to the same file exists in the same process -
+
+       ConnectionException: Can't open a connection to same database file
+       with a different configuration than existing connections
+
+   A page that reads with `read_only=True` and then writes a decision is asking
+   for exactly that, and the failure is easy to miss because it happens inside a
+   callback. So the app does not mix configurations, and `write_session` below
+   surfaces any write failure on the page instead of letting it disappear.
 """
 
 from __future__ import annotations
 
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -83,7 +96,8 @@ def load_tables() -> dict[str, pd.DataFrame]:
     if not settings.db_path.exists():
         return {}
     frames: dict[str, pd.DataFrame] = {}
-    con = duckdb.connect(str(settings.db_path), read_only=True)
+    # Read-write on purpose - see rule 3 in the module docstring.
+    con = duckdb.connect(str(settings.db_path))
     try:
         for table in TABLES:
             try:
@@ -213,3 +227,28 @@ def neutral_chart_layout(figure, height: int = 320):
 def case_link(case_id: str) -> None:
     """Send the reader to Case Detail with this case selected."""
     st.session_state["selected_case_id"] = case_id
+
+
+@contextmanager
+def write_session():
+    """A read-write session whose failures are visible on the page.
+
+    A write that fails inside a Streamlit callback disappears: the exception is
+    swallowed by the rerun, the page redraws looking normal, and the analyst
+    believes their decision was recorded. For a product whose whole argument is
+    an auditable decision trail, a silently dropped write is the worst possible
+    failure, so this makes it loud.
+    """
+    from riskops.db import session as db_session
+
+    try:
+        with db_session(get_settings()) as con:
+            yield con
+    except Exception as exc:  # noqa: BLE001 - the point is to show anything at all
+        st.error(
+            f"**The write failed and nothing was recorded.** `{type(exc).__name__}: {exc}`\n\n"
+            "Nothing on this page has changed. If another process is holding the warehouse "
+            "open, close it and try again.",
+            icon="🚨",
+        )
+        st.stop()

@@ -128,7 +128,7 @@ with left:
         {"Field": "Refunded", "Value": money(full["refunded_minor"], full["presentment_currency"])},
         {"Field": "Charged back", "Value": money(full["charged_back_minor"], full["presentment_currency"])},
         {"Field": "Settled", "Value": money(full["settled_minor"], full["settlement_currency"])},
-    ]).set_index("Field"))
+    ]).astype({"Value": "string"}).set_index("Field"))
 with middle:
     st.markdown("**FX**")
     st.write(pd.DataFrame([
@@ -138,7 +138,7 @@ with middle:
         {"Field": "Applied rate", "Value": full["applied_fx_rate"] or "-"},
         {"Field": "Quote id", "Value": full["fx_quote_id"] or "-"},
         {"Field": "Quoted at", "Value": str(full["fx_quoted_at"])[:19]},
-    ]).set_index("Field"))
+    ]).astype({"Value": "string"}).set_index("Field"))
 with right:
     st.markdown("**Context**")
     st.write(pd.DataFrame([
@@ -149,7 +149,7 @@ with right:
         {"Field": "Merchant country", "Value": full["merchant_country"]},
         {"Field": "Device", "Value": full["device_id"] or "(missing)"},
         {"Field": "Idempotency key", "Value": full["idempotency_key"]},
-    ]).set_index("Field"))
+    ]).astype({"Value": "string"}).set_index("Field"))
 
 st.markdown("**Lifecycle**")
 timeline = events[events["transaction_id"] == txn_id].sort_values("occurred_at")

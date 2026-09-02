@@ -99,6 +99,8 @@ runs the demo with no server, while the analytics stay real SQL rather than pand
 | `risk/rules.py` | Detection | Deterministic, and every signal names its evidence fields — which is what makes "ungrounded claim" computable later |
 | `risk/policy.py` | The routing decision | A pure function; the only component that may act without a human |
 | `ai/guardrails.py` | Both gates | The enforcement point for the product's central claim |
+| `ai/conversation.py` | Follow-up questions, entity context, delegation refusal | A conversation can be *talked into* things a one-shot brief cannot, so it needs a boundary of its own |
+| `eval/robustness.py` | Seed sweep, baselines, ablation, threshold curve | A single-run number implies a precision nobody measured |
 | `audit/log.py` | Append-only writes and the authority check | `record_decision` refuses `ai_copilot` before anything is written |
 | `audit/chain.py` | Hash chaining and verification | Returns three states (`verified`/`broken`/`unverifiable`), because "predates chaining" and "was tampered with" are opposite findings |
 | `eval/runner.py` | Every quoted number | Nothing is typed by hand into a README |

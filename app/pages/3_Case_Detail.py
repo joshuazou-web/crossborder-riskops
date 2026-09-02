@@ -15,12 +15,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from _shared import money, page_setup, pill, synthetic_banner  # noqa: E402
+from _shared import money, page_setup, pill, synthetic_banner, write_session  # noqa: E402
+from riskops.ai.conversation import (  # noqa: E402
+    ask,
+    build_entity_context,
+    context_citation_keys,
+    load_conversation,
+    record_followup,
+    suggested_questions,
+)
 from riskops.ai.copilot import investigate, record_invocation  # noqa: E402
-from riskops.ai.prompt import build_case_packet  # noqa: E402
+from riskops.ai.prompt import build_case_packet, citation_keys  # noqa: E402
 from riskops.ai.schema import CaseBrief  # noqa: E402
 from riskops.config import get_settings  # noqa: E402
-from riskops.db import session  # noqa: E402
 from riskops.review.workflow import (  # noqa: E402
     WorkflowError,
     file_appeal,
@@ -49,10 +56,15 @@ if not case_ids:
     st.info("No cases in this dataset.")
     st.stop()
 
-preselected = st.session_state.get("selected_case_id")
+# A case is a thing people send each other in chat, so it needs to survive being
+# pasted: ?case=CASE_0000862 wins over whatever was last selected in this session.
+from_url = st.query_params.get("case")
+preselected = from_url or st.session_state.get("selected_case_id")
 index = case_ids.index(preselected) if preselected in case_ids else 0
 case_id = st.selectbox("Case", case_ids, index=index)
 st.session_state["selected_case_id"] = case_id
+if from_url and from_url != case_id:
+    st.query_params.clear()
 
 case = cases[cases["case_id"] == case_id].iloc[0]
 txn_id = str(case["transaction_id"])
@@ -190,7 +202,7 @@ with ai_column:
             settings, case_id=case_id, transaction_id=txn_id, packet=packet,
             allowed_citations=allowed, input_gate=gate, requested_by="dashboard",
         )
-        with session(settings) as con:
+        with write_session() as con:
             record_invocation(con, brief, packet=packet, requested_by="dashboard")
         st.cache_data.clear()
 
@@ -259,7 +271,7 @@ with ai_column:
                     {"Field": "Unresolved citations",
                      "Value": ", ".join(guard.unresolved_citations) or "-"},
                     {"Field": "PII redactions", "Value": guard.redactions},
-                ]).set_index("Field")
+                ]).astype({"Value": "string"}).set_index("Field")
             )
             if guard.injection_verdict == "quarantined":
                 st.error(
@@ -269,6 +281,107 @@ with ai_column:
                 )
             for reason in guard.reasons:
                 st.caption(f"• {reason}")
+
+st.divider()
+
+# --- follow-up conversation -------------------------------------------------
+st.subheader("Ask a follow-up")
+st.caption(
+    "The brief answers the first question. This answers the second — and it gets a **wider** "
+    "packet than the brief did: this wallet's and merchant's history, the payout group, and the "
+    "decision trail. Same rules apply: every answer cites the fields it used, an answer that "
+    "cannot be grounded is withheld rather than guessed, and **a question that asks the copilot "
+    "to decide is refused, not answered.**"
+)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _packets(case_id_key: str, _case, _txn, _signals, _breaks, _merchant, _wallet, _score,
+             _transactions, _cases, _all_signals, _merchants, _decisions, _appeals):
+    """Case packet plus entity context, and the citation keys that unlock."""
+    packet, _, _ = build_case_packet(
+        case=_case, transaction=_txn, signals=_signals, breaks=_breaks,
+        merchant=_merchant, wallet=_wallet, model_score=_score,
+    )
+    context, context_gate = build_entity_context(
+        transaction=_txn, transactions=_transactions, cases=_cases, signals=_all_signals,
+        merchants=_merchants, decisions=_decisions, appeals=_appeals,
+    )
+    allowed = citation_keys(packet) | context_citation_keys(context)
+    return packet, context, allowed, context_gate
+
+
+merchant_rows = frames["core.merchants"]
+merchant_rows = merchant_rows[merchant_rows["merchant_id"] == str(full["merchant_id"])]
+wallet_rows = frames["core.wallets"]
+wallet_rows = wallet_rows[wallet_rows["wallet_id"] == str(full["wallet_id"])]
+score_rows = frames["risk.model_scores"]
+score_rows = score_rows[score_rows["transaction_id"] == txn_id]
+
+fu_packet, fu_context, fu_allowed, fu_gate = _packets(
+    case_id, case.to_dict(), full.to_dict(), case_signals.to_dict("records"),
+    case_breaks.to_dict("records"),
+    merchant_rows.iloc[0].to_dict() if not merchant_rows.empty else {},
+    wallet_rows.iloc[0].to_dict() if not wallet_rows.empty else {},
+    score_rows.iloc[0].to_dict() if not score_rows.empty else None,
+    transaction, cases, signals, frames["core.merchants"], decisions, appeals,
+)
+
+with write_session() as _con:
+    turns = load_conversation(_con, case_id)
+
+if fu_gate.quarantined:
+    st.warning(
+        "Free text on this wallet's or merchant's other transactions matched injection patterns "
+        "and was withheld from the model before any question was asked.",
+        icon="🛡️",
+    )
+
+for turn in turns:
+    with st.chat_message("user"):
+        st.write(turn.question)
+        if turn.asked_by:
+            st.caption(f"asked by {turn.asked_by}")
+    with st.chat_message("assistant", avatar="🛡️"):
+        if turn.refused_delegation:
+            st.error(turn.answer)
+            st.caption(f"refused · {turn.decline_reason}")
+        elif turn.answered:
+            st.write(turn.answer)
+            if turn.citations:
+                st.markdown(
+                    f"<div class='evidence'>cites: {', '.join(turn.citations)}</div>",
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info(turn.decline_reason or "No answer could be grounded.")
+        if turn.guardrail_reasons:
+            st.caption(" · ".join(turn.guardrail_reasons))
+
+openers = suggested_questions(fu_packet, fu_context)
+if openers:
+    st.caption("Questions these packets can answer:")
+    opener_columns = st.columns(min(len(openers), 3))
+    for index, opener in enumerate(openers[:3]):
+        if opener_columns[index].button(opener, key=f"opener_{index}",
+                                        use_container_width=True):
+            st.session_state["pending_question"] = opener
+
+pending = st.session_state.pop("pending_question", None)
+typed = st.chat_input("Ask about this wallet, this merchant, the money, or a signal…")
+question = pending or typed
+
+if question:
+    with write_session() as con:
+        turn = ask(
+            get_settings(), case_id=case_id, transaction_id=txn_id, question=question,
+            case_packet=fu_packet, entity_context=fu_context, allowed_citations=fu_allowed,
+            turn_index=len(turns), history=turns, asked_by="analyst.demo",
+            context_gate=fu_gate,
+        )
+        record_followup(con, turn)
+    st.cache_data.clear()
+    st.rerun()
 
 st.divider()
 
@@ -297,7 +410,7 @@ else:
 
     if submitted:
         try:
-            with session(get_settings()) as con:
+            with write_session() as con:
                 result = submit_decision(
                     con, case_id=case_id, actor_id=actor,
                     actor_role=str(case["assigned_role"]) if str(case["assigned_role"]) != "customer_support"
@@ -330,13 +443,13 @@ if not case_appeals.empty:
         appeal_id = str(open_appeals.iloc[0]["appeal_id"])
         columns = st.columns([1, 1, 3])
         if columns[0].button("Accept appeal", type="primary"):
-            with session(get_settings()) as con:
+            with write_session() as con:
                 resolve_appeal(con, appeal_id=appeal_id, actor_id="analyst.demo", accepted=True,
                                note="Evidence resolves the signals.")
             st.cache_data.clear()
             st.rerun()
         if columns[1].button("Reject appeal"):
-            with session(get_settings()) as con:
+            with write_session() as con:
                 resolve_appeal(con, appeal_id=appeal_id, actor_id="analyst.demo", accepted=False,
                                note="Evidence does not resolve the signals.")
             st.cache_data.clear()
@@ -351,7 +464,7 @@ elif str(case["case_state"]) in ("resolved_held", "resolved_released"):
         evidence_note = columns[2].text_input("Note", placeholder="what the claimant supplied")
         filed = st.form_submit_button("File appeal")
     if filed:
-        with session(get_settings()) as con:
+        with write_session() as con:
             file_appeal(con, case_id=case_id, filed_by="support.demo", claimant=claimant,
                         evidence_type=evidence, evidence_note=evidence_note)
         st.cache_data.clear()

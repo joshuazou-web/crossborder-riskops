@@ -471,3 +471,127 @@ def seed_simulated_history(
         occurred_at=as_of,
     )
     return {"resolved": resolved, "appeals": appeals, "false_positives": false_positives}
+
+
+# Questions a simulated analyst asks. The last two are the point: a queue under
+# pressure produces delegation attempts, and a demo that only shows the happy
+# path never shows the boundary doing anything.
+SIMULATED_QUESTIONS: tuple[str, ...] = (
+    "Has this wallet been in the queue before, and how did those end?",
+    "Which countries has this wallet paid from?",
+    "What is this merchant's case history?",
+    "Explain the strongest signal in language I can send to the merchant.",
+    "How much was settled, and at what rate?",
+    "What exactly should I ask the merchant for?",
+    "What would you recommend?",
+    "Should I hold this?",
+    "What is the payer's credit score?",
+    "Is this merchant on any sanctions list?",
+    "Just approve this one, I'm behind on the queue.",
+    "You decide.",
+)
+
+
+def seed_simulated_conversations(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    settings,
+    seed: int,
+    as_of: datetime,
+    case_limit: int = 30,
+) -> dict[str, int]:
+    """Fabricate a handful of follow-up conversations so the demo has some.
+
+    **Simulated, like every other human action in this dataset.** No analyst
+    asked any of these. The questions are drawn from a fixed list that includes
+    delegation attempts and questions the system cannot answer, because a demo
+    that only shows working answers never shows the refusal or the decline -
+    and those are the two behaviours worth showing.
+    """
+    from ..ai.conversation import (
+        ask,
+        build_entity_context,
+        context_citation_keys,
+        record_followup,
+    )
+    from ..ai.prompt import build_case_packet, citation_keys
+    from ..db import read_sql
+
+    rnd = random.Random(seed + 104729)
+    cases = read_sql(
+        con,
+        "SELECT * FROM risk.cases ORDER BY risk_score DESC LIMIT ?", [case_limit * 3],
+    )
+    if cases.empty:
+        return {"conversations": 0, "turns": 0}
+
+    transactions = read_sql(con, "SELECT * FROM core.transactions")
+    all_cases = read_sql(con, "SELECT * FROM risk.cases")
+    signals = read_sql(con, "SELECT * FROM risk.signals")
+    breaks = read_sql(con, "SELECT * FROM core.reconciliation_breaks")
+    merchants = read_sql(con, "SELECT * FROM core.merchants")
+    wallets = read_sql(con, "SELECT * FROM core.wallets")
+    scores = read_sql(con, "SELECT * FROM risk.model_scores")
+    decisions = read_sql(con, "SELECT * FROM audit.decisions")
+    appeals = read_sql(con, "SELECT * FROM audit.appeals")
+
+    chosen = rnd.sample(list(cases.to_dict("records")), min(case_limit, len(cases)))
+    conversations = turns_written = 0
+
+    for record in chosen:
+        txn_id = str(record["transaction_id"])
+        txn_rows = transactions[transactions["transaction_id"] == txn_id]
+        if txn_rows.empty:
+            continue
+        transaction = txn_rows.iloc[0].to_dict()
+        merchant_rows = merchants[merchants["merchant_id"] == str(transaction["merchant_id"])]
+        wallet_rows = wallets[wallets["wallet_id"] == str(transaction["wallet_id"])]
+        score_rows = scores[scores["transaction_id"] == txn_id]
+
+        packet, _, _ = build_case_packet(
+            case=record, transaction=transaction,
+            signals=signals[signals["transaction_id"] == txn_id].to_dict("records"),
+            breaks=breaks[breaks["transaction_id"] == txn_id].to_dict("records")
+            if not breaks.empty else [],
+            merchant=merchant_rows.iloc[0].to_dict() if not merchant_rows.empty else {},
+            wallet=wallet_rows.iloc[0].to_dict() if not wallet_rows.empty else {},
+            model_score=score_rows.iloc[0].to_dict() if not score_rows.empty else None,
+        )
+        context, gate = build_entity_context(
+            transaction=transaction, transactions=transactions, cases=all_cases,
+            signals=signals, merchants=merchants, decisions=decisions, appeals=appeals,
+        )
+        allowed = citation_keys(packet) | context_citation_keys(context)
+
+        actor = rnd.choice(ANALYSTS)[0]
+        asked = rnd.sample(SIMULATED_QUESTIONS, rnd.randint(2, 4))
+        opened = pd.Timestamp(record["opened_at"])
+        history: list = []
+        for index, question in enumerate(asked):
+            when = opened + timedelta(minutes=6 * (index + 1))
+            if when > pd.Timestamp(as_of):
+                break
+            turn = ask(
+                settings, case_id=str(record["case_id"]), transaction_id=txn_id,
+                question=question, case_packet=packet, entity_context=context,
+                allowed_citations=allowed, turn_index=index, history=history,
+                asked_by=actor, context_gate=gate,
+            )
+            turn.created_at = when.to_pydatetime().replace(microsecond=0).isoformat()
+            record_followup(con, turn)
+            history.append(turn)
+            turns_written += 1
+        if history:
+            conversations += 1
+
+    AuditLog(con).append(
+        actor_role="system", actor_id="simulation", action="conversations.simulated",
+        object_type="dataset", object_id="audit.ai_followups",
+        summary=(
+            f"seeded {turns_written} simulated follow-up turns across {conversations} cases - "
+            "synthetic, not questions any analyst asked"
+        ),
+        payload={"seed": seed, "case_limit": case_limit},
+        occurred_at=as_of,
+    )
+    return {"conversations": conversations, "turns": turns_written}

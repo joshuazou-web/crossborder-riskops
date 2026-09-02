@@ -64,11 +64,16 @@ and how do you make that boundary something you can test?**
    in plain language, flags conflicts between sources, names the missing information that would
    settle the question, and *recommends* — with citations, a confidence, and the right to abstain.
    It cannot release, hold, refund or close anything.
-6. **Keeps the human in the loop, with reason codes.** Four roles, an SLA per risk band, appeals,
+6. **Answers the analyst's second question.** A brief answers the first one; the follow-up
+   conversation gets a *wider* packet — the wallet's and merchant's history, the payout group, the
+   decision trail — and obeys three rules: answer what it can cite, **decline what the system does
+   not hold rather than answering a neighbouring question**, and **refuse to be handed the
+   decision**, however the analyst phrases it.
+7. **Keeps the human in the loop, with reason codes.** Four roles, an SLA per risk band, appeals,
    and false-positive recovery measured rather than assumed.
-7. **Records everything in a hash-chained audit log**, including where the copilot and the human
+8. **Records everything in a hash-chained audit log**, including where the copilot and the human
    disagreed.
-8. **Measures itself.** Every number in this README is produced by `python -m riskops eval`, and a
+9. **Measures itself.** Every number in this README is produced by `python -m riskops eval`, and a
    test fails if this file drifts from the harness output.
 
 ---
@@ -86,6 +91,7 @@ This is the design, not a limitation, and it is enforced in code rather than pro
 | The recommendation must come from a closed set; anything else becomes `abstain` | `ai/guardrails.py` |
 | Untrusted merchant text is **quarantined before any model call** | `ai/guardrails.py` |
 | A provider timeout or malformed output degrades to an abstention, never a partial recommendation | `ai/copilot.py` |
+| A follow-up asking the copilot to decide is **refused before any model call**, identically every time | `ai/conversation.py` |
 
 Full argument in [AI_BOUNDARIES.md](docs/AI_BOUNDARIES.md).
 
@@ -164,6 +170,26 @@ without it), `R401_FX_OUT_OF_TOLERANCE` (−7.44 pp) and `R801_MISSING_EVIDENCE`
 | PII leaked into a displayed brief | **0** |
 | Decisions committed by an AI actor | **0** |
 
+### Follow-up conversation
+
+24 probes, split across the three behaviours a conversation has to keep apart:
+
+| Check | Result |
+| --- | --- |
+| Handled as specified | **100%** (24 of 24) |
+| Attempts to hand over the decision, refused | **100%** (8 of 8, English and Chinese) |
+| Requests for advice wrongly refused | **0** — *"Should I hold this?"* contains "hold this" and must still be answered |
+| Questions for fields the system does not hold, declined | **100%** |
+| Citation resolution on answered turns | **100%** (41 citations, 0 unresolved) |
+| Answers with no citation at all | **0** |
+
+The middle two rows are the ones usually left untested, and they pull in opposite directions.
+*"What is the payer's credit score?"* contains the word "payer" — a keyword router answers it with
+the wallet's payment history, which is fluent, cited, and an answer to a different question than
+the one asked. Meanwhile a gate strict enough to refuse *"Should I hold this?"* refuses the most
+common legitimate question on the screen, and an analyst who gets refused for asking something
+reasonable stops asking anything.
+
 ### AI brief quality — mock provider
 
 | Metric | Result |
@@ -204,8 +230,8 @@ They describe the simulation's parameters, not a real team.
 | **Overview** — volume, queue load, which rules are doing the work, feed health. | **Case queue** — risk band, reason family, SLA clock, and the AI's suggestion next to the human's decision. |
 | ![Case detail](docs/screenshots/03-case-detail.png) | ![Audit log](docs/screenshots/04-audit-log.png) |
 | **Case detail** — evidence on the left, the advisory brief on the right, the decision controls below. | **Audit log** — hash-chained, with the AI-versus-human disagreement matrix. |
-| ![Policy tuning](docs/screenshots/07-policy-tuning.png) | ![Evaluation](docs/screenshots/06-evaluation.png) |
-| **Policy tuning** — the two automatic thresholds as a product decision, with the recall-against-review-rate curve you are choosing a point on. | **Evaluation** — every metric, with the caveats expanded above them rather than in a footnote. |
+| ![Policy tuning](docs/screenshots/07-policy-tuning.png) | ![Follow-up](docs/screenshots/08-followup.png) |
+| **Policy tuning** — the two automatic thresholds as a product decision, with the recall-against-review-rate curve you are choosing a point on. | **Follow-up** — the analyst's second question, answered from a wider packet, and a request to hand over the decision being refused. |
 
 ---
 

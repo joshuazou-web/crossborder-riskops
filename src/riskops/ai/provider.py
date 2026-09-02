@@ -72,10 +72,14 @@ class MockProvider:
             packet = json.loads(user_prompt)
         except json.JSONDecodeError:
             packet = {}
-        brief = _brief_from_packet(packet)
+        # A packet carrying a question is a follow-up; one without is a brief.
+        payload = (
+            _answer_from_packet(packet) if packet.get("question")
+            else _brief_from_packet(packet)
+        )
         latency = (time.perf_counter() - started) * 1000
         return ProviderResponse(
-            text=json.dumps(brief, ensure_ascii=False),
+            text=json.dumps(payload, ensure_ascii=False),
             model_version=MOCK_MODEL_VERSION,
             provider=self.name,
             latency_ms=latency,
@@ -422,6 +426,370 @@ def _suggest(
             "with the payer's history."
         )
     return action, confidence, rationale
+
+
+# ---------------------------------------------------------------------------
+# The mock's follow-up answering.
+#
+# Deliberately narrow: it recognises a handful of intents it can ground in the
+# packets and **declines everything else by name**. That is not a shortcut -
+# declining well is the behaviour the evaluation measures, and a mock that
+# improvised an answer to every question would hide exactly the failure the
+# guardrails exist to catch.
+# ---------------------------------------------------------------------------
+
+# Fields a question can plausibly ask for that this system provably does not
+# hold. Checked FIRST, and they win over every intent below.
+#
+# This list is the difference between a useful assistant and a dangerous one.
+# "What is the payer's credit score?" contains the word "payer", and a naive
+# keyword router answers it with the wallet's payment history - fluent, cited,
+# and an answer to a different question. A reviewer skimming at 02:14 reads the
+# confident paragraph, not the mismatch between it and what they asked.
+_UNAVAILABLE_CONCEPTS: tuple[tuple[str, str], ...] = (
+    ("credit score", "a credit score"),
+    ("credit rating", "a credit rating"),
+    ("sanction", "sanctions or watchlist screening"),
+    ("watchlist", "sanctions or watchlist screening"),
+    ("blacklist", "a blocklist"),
+    ("blocklist", "a blocklist"),
+    ("pep ", "politically-exposed-person status"),
+    ("criminal", "criminal records"),
+    ("court", "court records"),
+    ("kyc document", "KYC documents"),
+    ("passport", "identity documents"),
+    ("id document", "identity documents"),
+    ("phone number", "contact details"),
+    ("email address", "contact details"),
+    ("home address", "contact details"),
+    ("real name", "the payer's identity"),
+    ("who is the customer", "the payer's identity"),
+    ("income", "income data"),
+    ("salary", "income data"),
+    ("social media", "social media data"),
+    ("ip address", "raw IP addresses (only the country is retained)"),
+    ("chargeback ratio", "a merchant chargeback ratio"),
+    ("信用分", "a credit score"),
+    ("制裁", "sanctions or watchlist screening"),
+    ("黑名单", "a blocklist"),
+    ("身份证", "identity documents"),
+    ("真实姓名", "the payer's identity"),
+    ("手机号", "contact details"),
+)
+
+# Intents, ordered most specific first. Order matters and is the fix for a real
+# bug: "explain the signal in language I can send to the merchant" and "which
+# merchants share this payout account" both contain "merchant", so the generic
+# entity intents have to be checked last or they swallow everything.
+#
+# Matched in English and Chinese, because the workbench is used in both and an
+# analyst types in whichever they are thinking in.
+_INTENT_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("explain_signal", ("explain", "why did", "why does", "what does this signal",
+                        "in plain", "in language", "解释", "为什么", "什么意思")),
+    ("payout_group", ("payout", "beneficiary", "settle to", "same account",
+                      "share this account", "shared account", "ring",
+                      "收款账户", "结算账户", "关联账户")),
+    ("appeal", ("appeal", "申诉", "上诉")),
+    ("decision_history", ("who decided", "decision history", "decision trail",
+                          "previously decided", "audit trail", "谁决定", "决策记录")),
+    ("missing_info", ("missing", "what should i ask", "what do i need", "evidence needed",
+                      "what evidence", "缺什么", "补充材料", "需要什么")),
+    ("recommendation", ("recommend", "what would you", "your view", "should i",
+                        "建议", "你认为", "怎么看")),
+    ("money", ("amount", "how much", "settled", "settle", "fee", "fx", "exchange rate",
+               "reconcil", "金额", "多少钱", "结算", "手续费", "汇率")),
+    ("wallet_geography", ("countr", "travel", "where has", "geograph",
+                          "国家", "地区", "旅行", "在哪")),
+    ("merchant_history", ("merchant", "seller", "this shop", "商户", "商家")),
+    ("wallet_history", ("wallet", "payer", "this customer", "been here before",
+                        "seen before", "钱包", "付款人", "之前", "历史")),
+)
+
+
+def _match_intent(question: str) -> str:
+    """The intent, or `unavailable:<what>` when the packets provably lack it."""
+    lowered = question.lower()
+    for concept, description in _UNAVAILABLE_CONCEPTS:
+        if concept in lowered:
+            return f"unavailable:{description}"
+    for intent, keywords in _INTENT_KEYWORDS:
+        if any(keyword in lowered for keyword in keywords):
+            return intent
+    return "unknown"
+
+
+def _decline(reason: str, needed: str) -> dict:
+    return {
+        "answered": False,
+        "answer": "",
+        "citations": [],
+        "intent": "declined",
+        "decline_reason": f"{reason} {needed}".strip(),
+    }
+
+
+def _answer_from_packet(packet: dict) -> dict:
+    question = str(packet.get("question", ""))
+    intent = _match_intent(question)
+
+    wallet = packet.get("wallet_ctx", {})
+    merchant = packet.get("merchant_ctx", {})
+    group = packet.get("payout_group", {})
+    txn = packet.get("transaction", {})
+    signals = packet.get("signals", [])
+    missing = packet.get("missing_information", [])
+
+    if intent.startswith("unavailable:"):
+        wanted = intent.split(":", 1)[1]
+        return _decline(
+            f"This system does not hold {wanted}, so I have nothing to answer that from.",
+            "Answering it from the payment history I do have would be answering a different "
+            "question than the one you asked, which is worse than saying no.",
+        )
+
+    if intent == "unknown":
+        return _decline(
+            "That is not something the case packet or the entity context contains, so answering "
+            "it would mean inventing it.",
+            "I can speak to this wallet's and merchant's history, the payout group, the signals "
+            "on this case, the money and FX, what evidence is missing, and the decision and "
+            "appeal trail.",
+        )
+
+    if intent == "wallet_history":
+        total = int(wallet.get("transactions_total", 0))
+        if total <= 1:
+            return _decline(
+                "This wallet has no history in the current window - this is the only payment on "
+                "file for it.",
+                "That absence is itself worth noting: nothing about this payer can be called "
+                "abnormal, because there is no baseline to compare it against.",
+            )
+        outcomes = wallet.get("prior_case_outcomes", {})
+        outcome_text = (
+            ", ".join(f"{count} {action}" for action, count in outcomes.items())
+            if outcomes else "no case has been resolved yet"
+        )
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"This wallet has {total} payments in the window, first seen "
+                f"{wallet.get('first_seen', 'unknown')} and last seen "
+                f"{wallet.get('last_seen', 'unknown')}. It has opened "
+                f"{wallet.get('cases_opened', 0)} case(s), resolving as: {outcome_text}. "
+                f"It has paid from {wallet.get('devices_used', 0)} distinct device(s)."
+            ),
+            "citations": ["wallet_ctx.transactions_total", "wallet_ctx.cases_opened",
+                          "wallet_ctx.prior_case_outcomes", "wallet_ctx.first_seen",
+                          "wallet_ctx.last_seen", "wallet_ctx.devices_used"],
+            "decline_reason": "",
+        }
+
+    if intent == "wallet_geography":
+        countries = wallet.get("countries_paid_from", [])
+        if not countries:
+            return _decline("No IP geography is on file for this wallet's payments.",
+                            "A device fingerprint or IP record would be needed.")
+        recent = wallet.get("recent_transactions", [])
+        trail = "; ".join(
+            f"{row.get('date', '')[:10]} from {row.get('ip_country', '?')}"
+            for row in recent[:5]
+        )
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"This wallet has paid from {len(countries)} countr"
+                f"{'y' if len(countries) == 1 else 'ies'}: {', '.join(countries)}. "
+                f"The wallet itself is registered in {txn.get('wallet_country', 'unknown')}. "
+                f"Most recent payments: {trail}."
+            ),
+            "citations": ["wallet_ctx.countries_paid_from", "wallet_ctx.recent_transactions",
+                          "txn.wallet_country"],
+            "decline_reason": "",
+        }
+
+    if intent == "merchant_history":
+        outcomes = merchant.get("prior_case_outcomes", {})
+        outcome_text = (
+            ", ".join(f"{count} {action}" for action, count in outcomes.items())
+            if outcomes else "nothing resolved yet"
+        )
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"{merchant.get('merchant_id', 'This merchant')} is a "
+                f"{merchant.get('risk_tier', 'unknown')}-tier "
+                f"{merchant.get('mcc_description', 'uncategorised')} merchant, onboarded "
+                f"{merchant.get('onboarded_at', 'unknown')[:10]}. It has "
+                f"{merchant.get('transactions_total', 0)} payments in the window and "
+                f"{merchant.get('cases_opened', 0)} case(s): {outcome_text}."
+            ),
+            "citations": ["merchant_ctx.merchant_id", "merchant_ctx.risk_tier",
+                          "merchant_ctx.mcc_description", "merchant_ctx.onboarded_at",
+                          "merchant_ctx.transactions_total", "merchant_ctx.cases_opened",
+                          "merchant_ctx.prior_case_outcomes"],
+            "decline_reason": "",
+        }
+
+    if intent == "payout_group":
+        if not group.get("is_shared"):
+            return {
+                "answered": True,
+                "intent": intent,
+                "answer": (
+                    f"The payout account {group.get('payout_account_id', 'on file')} is used by "
+                    "this merchant only. There is no shared-beneficiary linkage on this case."
+                ),
+                "citations": ["payout_group.payout_account_id", "payout_group.is_shared"],
+                "decline_reason": "",
+            }
+        peers = [m for m in group.get("merchant_ids", []) if m != merchant.get("merchant_id")]
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"Payout account {group.get('payout_account_id')} is shared by "
+                f"{group.get('merchant_count', 0)} merchants. Besides this one: "
+                f"{', '.join(peers[:8]) or 'none listed'}. Worth saying plainly: a franchise "
+                "group and a fraud ring look identical at this level, so this is a reason to "
+                "look wider, not a finding on its own."
+            ),
+            "citations": ["payout_group.payout_account_id", "payout_group.merchant_count",
+                          "payout_group.merchant_ids", "payout_group.is_shared"],
+            "decline_reason": "",
+        }
+
+    if intent == "explain_signal":
+        if not signals:
+            return _decline("No rule fired on this transaction, so there is no signal to explain.",
+                            "")
+        strongest = signals[0]
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"{strongest.get('title')} ({strongest.get('rule_id')}, "
+                f"{strongest.get('severity')} severity). What it found: "
+                f"{strongest.get('detail')}. In plainer terms, this is a "
+                f"{strongest.get('family', 'risk')} observation, and it is computed from "
+                f"{strongest.get('evidence_fields', '').replace('|', ', ')} - so it can be "
+                "shown to the merchant field by field."
+            ),
+            "citations": [f"signal.{strongest.get('rule_id')}"],
+            "decline_reason": "",
+        }
+
+    if intent == "missing_info":
+        if not missing:
+            return {
+                "answered": True,
+                "intent": intent,
+                "answer": (
+                    "Nothing required is missing from this case. Device fingerprint, merchant "
+                    "category and payer history are all present, so it can be decided as it "
+                    "stands."
+                ),
+                "citations": ["txn.device_present", "merchant.mcc"],
+                "decline_reason": "",
+            }
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": "The case is missing: " + " ".join(missing),
+            "citations": ["txn.device_present", "merchant.mcc", "wallet.lifetime_txn_count"],
+            "decline_reason": "",
+        }
+
+    if intent == "appeal":
+        history = packet.get("appeal_history", [])
+        if not history:
+            return _decline("No appeal has been filed on this case.",
+                            "An appeal can be filed once the case is resolved.")
+        latest = history[-1]
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"{len(history)} appeal(s) on this case. The most recent was filed "
+                f"{latest.get('filed_at', '')[:10]} by the {latest.get('claimant', 'claimant')} "
+                f"with {latest.get('evidence_type', 'evidence')}, outcome: "
+                f"{latest.get('outcome', 'open')}."
+            ),
+            "citations": ["appeal_history"],
+            "decline_reason": "",
+        }
+
+    if intent == "decision_history":
+        history = packet.get("case_history", [])
+        if not history:
+            return _decline("No decision has been committed on this case yet.",
+                            "The decision controls below are where that happens.")
+        parts = [
+            f"{row.get('decided_at', '')[:16]} - {row.get('actor_role', '')} "
+            f"{row.get('action', '')} ({row.get('reason_code', '')})"
+            for row in history
+        ]
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": "Decision trail: " + "; ".join(parts) + ".",
+            "citations": ["case_history"],
+            "decline_reason": "",
+        }
+
+    if intent == "recommendation":
+        severities = [str(s.get("severity")) for s in signals]
+        rule_ids = {str(s.get("rule_id")) for s in signals}
+        model_score = float(packet.get("model", {}).get("score", 0.0) or 0.0)
+        action, confidence, rationale = _suggest(
+            missing=missing, rule_ids=rule_ids,
+            critical=severities.count("critical"), high=severities.count("high"),
+            has_signals=bool(signals), rule_strength=_rule_strength(severities),
+            model_score=model_score,
+        )
+        if action == "abstain":
+            return {
+                "answered": True,
+                "intent": intent,
+                "answer": f"I would not recommend an action here. {rationale}",
+                "citations": ["model.score"] + [f"signal.{r}" for r in sorted(rule_ids)][:3],
+                "decline_reason": "",
+            }
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"I would suggest **{action}** at confidence {confidence:.2f}. {rationale} "
+                "That is a recommendation, not a decision - committing it is yours to do, and "
+                "the audit log will record it under your name, not mine."
+            ),
+            "citations": ["model.score", "case.policy_action"]
+            + [f"signal.{r}" for r in sorted(rule_ids)][:3],
+            "decline_reason": "",
+        }
+
+    if intent == "money":
+        return {
+            "answered": True,
+            "intent": intent,
+            "answer": (
+                f"Authorised {txn.get('authorized_display', '-')}, captured "
+                f"{txn.get('amount_display', '-')}, fee {txn.get('fee_display', '-')}, settled "
+                f"{txn.get('settled_display', '-')}. The quote on file is "
+                f"{txn.get('quoted_fx_rate', '-')} and settlement was computed at "
+                f"{txn.get('applied_fx_rate', '-')}. These are quoted from the record - I do not "
+                "recompute money."
+            ),
+            "citations": ["txn.authorized_display", "txn.amount_display", "txn.fee_display",
+                          "txn.settled_display", "txn.quoted_fx_rate", "txn.applied_fx_rate"],
+            "decline_reason": "",
+        }
+
+    return _decline("I could not ground an answer to that in the packets available.", "")
 
 
 def input_digest(payload: str) -> str:

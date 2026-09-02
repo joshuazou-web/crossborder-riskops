@@ -284,6 +284,35 @@ AUDIT_DDL: list[str] = [
         closed_at       TIMESTAMP
     );
     """,
+    # Follow-up questions on a case. A question an analyst asked is as much part
+    # of the record as the answer: "what did they look at before deciding" is a
+    # question an auditor asks, and it has no answer if the conversation is not
+    # kept.
+    """
+    CREATE TABLE IF NOT EXISTS audit.ai_followups (
+        followup_id          VARCHAR PRIMARY KEY,
+        case_id              VARCHAR,
+        transaction_id       VARCHAR,
+        turn_index           BIGINT,
+        asked_by             VARCHAR,
+        question             VARCHAR,
+        answer               VARCHAR,
+        answered             BOOLEAN,
+        decline_reason       VARCHAR,
+        intent               VARCHAR,
+        delegation_labels    VARCHAR,
+        citations            VARCHAR,
+        unresolved_citations BIGINT,
+        guardrail_verdict    VARCHAR,
+        guardrail_reasons    VARCHAR,
+        injection_verdict    VARCHAR,
+        provider             VARCHAR,
+        model_version        VARCHAR,
+        prompt_version       VARCHAR,
+        latency_ms           DOUBLE,
+        created_at           TIMESTAMP
+    );
+    """,
     """
     CREATE TABLE IF NOT EXISTS audit.refresh_log (
         batch_id            VARCHAR PRIMARY KEY,

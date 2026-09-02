@@ -43,7 +43,7 @@ from ..db import (
 )
 from ..generator.synth import PER_USD, generate
 from ..money import CURRENCY_EXPONENTS
-from ..review.workflow import seed_simulated_history
+from ..review.workflow import seed_simulated_conversations, seed_simulated_history
 from ..risk import cases as case_builder
 from ..risk import policy, rules, scoring
 from ..taxonomy import TAXONOMY_VERSION
@@ -134,7 +134,7 @@ def run_refresh(
         # `audit.validation_results` still accumulate across runs so the run
         # history itself survives.
         for table in ("audit.audit_log", "audit.decisions", "audit.appeals",
-                      "audit.ai_invocations"):
+                      "audit.ai_invocations", "audit.ai_followups"):
             con.execute(f"DELETE FROM {table}")
 
         events = normalise_events(world.events, batch_id)
@@ -244,6 +244,11 @@ def run_refresh(
                 con, seed=resolved_seed, as_of=as_of,
                 brief_lookup=lambda case_id: briefs.get(case_id),
             )
+            conversations = seed_simulated_conversations(
+                con, settings=settings, seed=resolved_seed, as_of=as_of,
+            )
+            history.update(conversations)
+            counts["followup_turns"] = conversations["turns"]
 
         run_sql_file(con, settings.sql_dir / "marts.sql")
         counts["audit_entries"] = int(

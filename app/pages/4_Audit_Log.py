@@ -22,7 +22,8 @@ st.title("Audit Log")
 st.caption("Append-only and hash-chained. Nothing here is ever updated or deleted.")
 synthetic_banner()
 
-with session(get_settings(), read_only=True) as con:
+# Read-write like every other connection in this app; see app/_shared.py.
+with session(get_settings()) as con:
     chain = AuditLog(con).verify_chain()
 
 if chain.status == "verified":

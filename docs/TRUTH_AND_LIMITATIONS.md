@@ -143,6 +143,14 @@ Stated here rather than discovered by a reviewer:
    said.
 8. **No adversarial testing against a real model.** The output gate has only been tested against
    scripted responses, never against an actual jailbreak of an actual model.
+9. **The follow-up copilot recognises a fixed set of intents.** Under the mock provider it answers
+   ten kinds of question and declines everything else by name. That makes the *decline* behaviour
+   honest and measurable, and it means the breadth of what it can answer is a property of a
+   keyword table, not of a language model. A real provider on the same packets would answer more
+   and would need the same guardrails, which are provider-independent.
+10. **The simulated conversations are simulated.** `riskops demo` seeds 93 follow-up turns across
+   30 cases from a fixed question list. No analyst asked any of them. They exist so the demo shows
+   the refusal and the decline rather than only the happy path.
 
 ---
 
