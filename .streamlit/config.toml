@@ -1,0 +1,11 @@
+[server]
+headless = true
+port = 8501
+fileWatcherType = "auto"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#4a6fa5"

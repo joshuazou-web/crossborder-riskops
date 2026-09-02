@@ -1,0 +1,31 @@
+# Generated warehouse and model artefacts - rebuild with `python -m riskops demo`
+data/*.duckdb
+data/*.duckdb.wal
+data/raw/
+reports/*.joblib
+reports/marts_csv/
+reports/eval/
+
+# Secrets. Never commit a key; .env.example documents the variables instead.
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
