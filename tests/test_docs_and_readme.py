@@ -18,12 +18,19 @@ import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 README = PROJECT_ROOT / "README.md"
+README_ZH = PROJECT_ROOT / "README.zh-CN.md"
+READMES = (README, README_ZH)
 EVALUATION_JSON = PROJECT_ROOT / "reports" / "evaluation.json"
 
 
 @pytest.fixture(scope="module")
 def readme() -> str:
     return README.read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def readme_zh() -> str:
+    return README_ZH.read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +76,12 @@ class TestGeneratedDocs:
 class TestReadmeMatchesEvaluation:
     """The README's figures must be the harness's figures."""
 
-    def test_readme_matches_the_evaluation_output(self, readme, evaluation):
+    @pytest.fixture(params=[README, README_ZH], ids=lambda p: p.name)
+    def any_readme(self, request) -> str:
+        return request.param.read_text(encoding="utf-8")
+
+    def test_readme_matches_the_evaluation_output(self, any_readme, evaluation):
+        readme = any_readme
         detection = evaluation["risk_detection"]
         ai = evaluation["ai_quality"]
         safety = evaluation["agent_safety"]
@@ -148,7 +160,8 @@ class TestReadmeMatchesEvaluation:
               "the README."
         )
 
-    def test_confusion_matrix_counts_appear(self, readme, evaluation):
+    def test_confusion_matrix_counts_appear(self, any_readme, evaluation):
+        readme = any_readme
         confusion = evaluation["risk_detection"]["confusion"]
         for label, value in confusion.items():
             assert f"{value:,}" in readme or str(value) in readme, (
@@ -167,7 +180,10 @@ class TestReadmeMatchesEvaluation:
         assert evaluation["money_and_state"]["ledger_negative_amounts"] == 0
         assert evaluation["money_and_state"]["replay_disagreements"] == 0
 
-    def test_the_seed_and_scale_quoted_in_the_readme_are_the_ones_used(self, readme, evaluation):
+    def test_the_seed_and_scale_quoted_in_the_readme_are_the_ones_used(
+        self, any_readme, evaluation
+    ):
+        readme = any_readme
         config = evaluation["configuration"]
         assert str(config["seed"]) in readme
         assert f"{config['n_transactions']:,}" in readme
@@ -189,7 +205,8 @@ class TestHonesty:
         r"\bregulator[- ]approved\b",
     ]
 
-    @pytest.mark.parametrize("path", sorted((PROJECT_ROOT / "docs").glob("*.md")) + [README],
+    @pytest.mark.parametrize("path",
+                             sorted((PROJECT_ROOT / "docs").glob("*.md")) + list(READMES),
                              ids=lambda p: p.name)
     def test_no_unearned_marketing_claims(self, path):
         text = path.read_text(encoding="utf-8")
@@ -205,10 +222,14 @@ class TestHonesty:
                     continue
                 pytest.fail(f"{path.name}:{line} makes an unearned claim: {match.group(0)!r}")
 
-    @pytest.mark.parametrize("path", sorted((PROJECT_ROOT / "docs").glob("*.md")) + [README],
+    @pytest.mark.parametrize("path",
+                             sorted((PROJECT_ROOT / "docs").glob("*.md")) + list(READMES),
                              ids=lambda p: p.name)
     def test_synthetic_data_is_declared(self, path):
         text = path.read_text(encoding="utf-8").lower()
+        if path.name.endswith(".zh-CN.md"):
+            assert "合成数据" in text, f"{path.name} never says the data is synthetic"
+            return
         assert "synthetic" in text, (
             f"{path.name} never says the data is synthetic. Every document that shows or "
             "discusses a number has to say where it came from."
@@ -218,6 +239,45 @@ class TestHonesty:
         head = readme[:1200].lower()
         assert "synthetic" in head
         assert "never run in production" in head or "not affiliated" in head
+
+
+class TestBilingualReadme:
+    """Two READMEs drift. These are the checks that make drift fail loudly."""
+
+    def test_both_link_to_each_other(self, readme, readme_zh):
+        assert "README.zh-CN.md" in readme, "the English README does not link to the Chinese one"
+        assert "README.md" in readme_zh, "the Chinese README does not link back"
+
+    def test_the_chinese_readme_is_actually_chinese(self, readme_zh):
+        cjk = sum(1 for character in readme_zh if "\u4e00" <= character <= "\u9fff")
+        assert cjk > 2000, f"only {cjk} Chinese characters; this looks like a copy of the English"
+
+    def test_both_carry_the_synthetic_data_warning_above_the_fold(self, readme, readme_zh):
+        assert "synthetic" in readme[:1200].lower()
+        assert "合成数据" in readme_zh[:1200]
+
+    def test_both_embed_the_demo_animation(self, readme, readme_zh):
+        # The GIF is the only thing in either file that is consumed without a
+        # click, so a broken path here costs more than a broken link anywhere else.
+        assert "docs/screenshots/demo-en.gif" in readme
+        assert "docs/screenshots/demo-zh.gif" in readme_zh
+        for name in ("demo-en.gif", "demo-zh.gif"):
+            path = PROJECT_ROOT / "docs" / "screenshots" / name
+            assert path.exists(), f"{name} is referenced but missing"
+            size_mb = path.stat().st_size / 1_048_576
+            assert size_mb < 12, f"{name} is {size_mb:.1f} MB; too heavy for a README"
+
+    def test_both_have_the_read_by_role_table(self, readme, readme_zh):
+        # The section that lets one repository be entered from four angles - and
+        # the reason a different application does not need a different project.
+        assert "Reading this by role" in readme
+        assert "按角色阅读" in readme_zh
+
+    @pytest.mark.parametrize("path", READMES, ids=lambda p: p.name)
+    def test_every_referenced_local_file_exists(self, path):
+        text = path.read_text(encoding="utf-8")
+        for target in re.findall(r"\]\((docs/[^)\s]+|README[^)\s]*)\)", text):
+            assert (PROJECT_ROOT / target).exists(), f"{path.name} links to a missing {target}"
 
 
 class TestNoSecretsOrMachinePaths:

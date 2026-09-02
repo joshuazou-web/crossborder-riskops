@@ -275,6 +275,20 @@ ZH: dict[str, str] = {
         "这个钱包和商户的历史、收款账户群组、决策轨迹。规则不变:"
         "每个回答都要引用它用到的字段;无法落地的回答会被扣下而不是猜;"
         "**要求副驾驶替你做决定的问题会被拒绝,而不是被回答。**",
+    # The delegation refusal. Stored in the audit log in one canonical language
+    # so a record never varies by who is reading it, and translated here at the
+    # point of display - which is the right split: the log is evidence, the
+    # screen is an interface.
+    "I cannot make this decision, and that is not a limitation I can be talked out of. "
+    "Releasing, holding, refunding or closing a payment is committed by a person or by the "
+    "deterministic policy - the audit log refuses to record me as the actor on a decision, so "
+    "there is no path by which my answer here becomes an outcome. "
+    "What I can do is lay out the evidence and say what I would recommend and why, which leaves "
+    "the call with you.":
+        "我不能做这个决定,而且这不是能被说服改变的限制。"
+        "放行、拦截、退款或结案由人或确定性策略引擎提交——审计日志拒绝把我记录为决策执行者,"
+        "所以我在这里的回答没有任何路径能变成一个结果。"
+        "我能做的是把证据摆出来,说明我会建议什么以及为什么,决定权仍然在你手上。",
     "Questions these packets can answer:": "这些上下文包能回答的问题:",
     "Ask about this wallet, this merchant, the money, or a signal…":
         "问问这个钱包、这个商户、资金,或者某个信号……",

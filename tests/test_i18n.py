@@ -21,6 +21,7 @@ if str(APP) not in sys.path:
     sys.path.insert(0, str(APP))
 
 from _i18n import DEFAULT_LANGUAGE, LANGUAGES, ZH  # noqa: E402
+from riskops.ai.conversation import DELEGATION_REFUSAL  # noqa: E402
 
 PAGE_FILES = sorted([APP / "Home.py", APP / "_shared.py", *(APP / "views").glob("*.py")])
 
@@ -168,6 +169,9 @@ class TestCoverage:
             # rendered directly by a page.
             "Overview", "Transaction Explorer", "Case Queue", "Case Detail",
             "Audit Log", "Evaluation", "Policy Tuning",
+            # The delegation refusal reaches `t()` as `turn.answer`, a variable,
+            # so the AST walk cannot see it. Asserted by name below instead.
+            DELEGATION_REFUSAL,
         }
         stale = sorted(set(ZH) - used - indirect)
         assert not stale, (
@@ -191,6 +195,12 @@ class TestCriticalStrings:
         "that cannot be grounded is withheld rather than guessed, and **a question that asks the "
         "copilot to decide is refused, not answered.**",
     ]
+
+    def test_the_delegation_refusal_is_translated(self):
+        # The single most important sentence the product says. A Chinese analyst
+        # being refused in English is the one place this interface could look
+        # like it was bolted on.
+        assert DELEGATION_REFUSAL in ZH
 
     @pytest.mark.parametrize("text", CRITICAL)
     def test_the_honesty_and_boundary_notices_are_translated(self, text):

@@ -351,7 +351,9 @@ for turn in turns:
             st.caption(f"{t('asked by')} {turn.asked_by}")
     with st.chat_message("assistant", avatar="🛡️"):
         if turn.refused_delegation:
-            st.error(turn.answer)
+            # A fixed product sentence, so it is translated for display. The
+            # audit record keeps the canonical English either way.
+            st.error(t(turn.answer))
             st.caption(f"{t('refused')} · {turn.decline_reason}")
         elif turn.answered:
             st.write(turn.answer)

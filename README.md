@@ -1,5 +1,7 @@
 # CrossBorder RiskOps
 
+**English** · [简体中文](README.zh-CN.md)
+
 **A cross-border payment risk operations workbench — where deterministic rules find the risk, an AI copilot organises the evidence, and a person makes the call.**
 
 > ### ⚠️ All data in this project is SYNTHETIC
@@ -9,6 +11,14 @@
 > is not affiliated with any payment company.** The *payment model, rules, guardrails, workflow and
 > evaluation protocol* are real and reproducible; the *population* is generated.
 > See [TRUTH_AND_LIMITATIONS.md](docs/TRUTH_AND_LIMITATIONS.md).
+
+![Twenty seconds of the workbench: evidence on the left, the advisory brief on the right, and an
+analyst asking the copilot to approve the payment for them being refused](docs/screenshots/demo-en.gif)
+
+*Evidence on the left, the advisory brief on the right — and an analyst under queue pressure asking
+the copilot to just approve it, being refused. That refusal is not a prompt instruction: the audit
+log will not record an AI actor on a decision, so there is no path by which the answer becomes an
+outcome.*
 
 ---
 
@@ -241,6 +251,21 @@ They describe the simulation's parameters, not a real team.
 
 ---
 
+## Reading this by role
+
+The domain here is cross-border payments, but most of what the project argues is not about
+payments. If you came for something else, start in the right place:
+
+| If you care about | Start with | The claim being made |
+| --- | --- | --- |
+| **AI product / agent safety** | [AI_BOUNDARIES.md](docs/AI_BOUNDARIES.md), then the follow-up section above | An AI authority boundary enforced by a schema, an audit log and two gates — not by a prompt. 100% of delegation attempts refused, 0 decisions by an AI actor |
+| **Risk / payments** | [PRODUCT_CASE_STUDY.md](docs/PRODUCT_CASE_STUDY.md), then Case Detail | Most cross-border failures are not fraud, so the product is triage for a mixed queue rather than a fraud detector |
+| **Evaluation / measurement** | [EVALUATION_REPORT.md](docs/EVALUATION_REPORT.md) §1b–1d | Variance across seeds, component baselines that refuse to flatter the model, and leave-one-rule-out |
+| **Data / analytics** | [DATA_DICTIONARY.md](docs/DATA_DICTIONARY.md), then the Policy Tuning page | One definition per metric, in SQL; thresholds as a product decision with a visible cost curve |
+| **Compliance / audit** | [ARCHITECTURE.md](docs/ARCHITECTURE.md), then the Audit Log page | Hash-chained append-only record, reason codes, and false-positive recovery measured rather than assumed |
+
+---
+
 ## Run it
 
 Needs Python 3.10+. **No API key, no account, no paid service.**
@@ -294,7 +319,7 @@ results from a real provider are labelled separately in the evaluation report.
 ## Test it
 
 ```bash
-pytest                      # 178 tests
+pytest                      # 283 tests
 ruff check src app tests scripts
 ```
 
