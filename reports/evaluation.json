@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02T11:13:05",
+  "generated_at": "2026-09-02T14:49:33",
   "eval_version": "1.0.0",
   "dataset_version": "1.0.0",
   "versions": {
@@ -7,6 +7,7 @@
     "rules": "1.0.0",
     "policy": "1.0.0",
     "generator": "1.0.0",
+    "robustness": "1.0.0",
     "python": "3.13.14",
     "platform": "Windows"
   },
@@ -38,7 +39,12 @@
     "output_gate_handled_pct": 100.0,
     "decisions_committed_by_ai": 0,
     "false_positive_recovery_pct": 53.33,
-    "audit_chain_status": "verified"
+    "audit_chain_status": "verified",
+    "recall_across_seeds": "97.01% \u00b1 0.42%",
+    "precision_across_seeds": "80.06% \u00b1 1.49%",
+    "review_rate_across_seeds": "27.08% \u00b1 0.42%",
+    "model_recall_contribution_pct": 0.0,
+    "model_review_rate_cost_pct": -0.9
   },
   "risk_detection": {
     "transactions": 6000,
@@ -394,18 +400,18 @@
         "family": "fx_fee"
       },
       {
-        "rule_id": "R402_FEE_OFF_SCHEDULE",
-        "severity": "medium",
-        "fired": 66,
-        "precision_pct": 100.0,
-        "family": "fx_fee"
-      },
-      {
         "rule_id": "R602_DOUBLE_CREDIT",
         "severity": "critical",
         "fired": 66,
         "precision_pct": 100.0,
         "family": "dispute_abuse"
+      },
+      {
+        "rule_id": "R402_FEE_OFF_SCHEDULE",
+        "severity": "medium",
+        "fired": 66,
+        "precision_pct": 100.0,
+        "family": "fx_fee"
       },
       {
         "rule_id": "R201_WALLET_VELOCITY",
@@ -806,6 +812,616 @@
     "audit_entries": 1665,
     "audit_chain_status": "verified",
     "audit_chain_summary": "1665 entries verified; head 13e4c2787ff4...  A partial edit would break this chain."
+  },
+  "baselines": {
+    "configurations": [
+      {
+        "configuration": "rules only, thresholds unchanged",
+        "recall_pct": 71.91,
+        "precision_pct": 94.08,
+        "false_positive_rate_pct": 1.26,
+        "manual_review_rate_pct": 16.6,
+        "auto_release_leakage_pct": 7.31,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 937,
+        "fp": 59,
+        "fn": 366,
+        "tn": 4638
+      },
+      {
+        "configuration": "rules only, threshold rescaled",
+        "recall_pct": 96.47,
+        "precision_pct": 75.31,
+        "false_positive_rate_pct": 8.77,
+        "manual_review_rate_pct": 27.82,
+        "auto_release_leakage_pct": 1.06,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 1257,
+        "fp": 412,
+        "fn": 46,
+        "tn": 4285
+      },
+      {
+        "configuration": "model only, matched review rate",
+        "recall_pct": 96.7,
+        "precision_pct": 77.97,
+        "false_positive_rate_pct": 7.58,
+        "manual_review_rate_pct": 26.93,
+        "auto_release_leakage_pct": 0.98,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 1260,
+        "fp": 356,
+        "fn": 43,
+        "tn": 4341,
+        "matched_threshold": 0.3187
+      },
+      {
+        "configuration": "model only without rule features",
+        "recall_pct": 68.53,
+        "precision_pct": 55.26,
+        "false_positive_rate_pct": 15.39,
+        "manual_review_rate_pct": 26.93,
+        "auto_release_leakage_pct": 9.35,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 893,
+        "fp": 723,
+        "fn": 410,
+        "tn": 3974,
+        "matched_threshold": 0.5005,
+        "features_used": 12,
+        "model_test_recall": 0.7042
+      },
+      {
+        "configuration": "rules + model (shipped)",
+        "recall_pct": 96.47,
+        "precision_pct": 77.83,
+        "false_positive_rate_pct": 7.62,
+        "manual_review_rate_pct": 26.92,
+        "auto_release_leakage_pct": 1.05,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 1257,
+        "fp": 358,
+        "fn": 46,
+        "tn": 4339
+      }
+    ],
+    "rule_weight": 0.7,
+    "rescaled_release_threshold": 0.175,
+    "model_contribution": {
+      "recall_delta_pct": 0.0,
+      "review_rate_delta_pct": -0.9,
+      "precision_delta_pct": 2.52,
+      "measured_against": "rules only, threshold rescaled"
+    },
+    "naive_comparison": {
+      "recall_delta_pct": 24.56,
+      "why_it_overstates": "Muting the model removes up to 0.30 from every combined score while the threshold stays where it was, so part of this gap is the blend arithmetic rather than anything the model found."
+    },
+    "rule_derived_features": [
+      "signal_count",
+      "max_severity_rank",
+      "distinct_signal_families"
+    ],
+    "note": "`rules only` runs the real policy with the model score forced to zero. `model only` ignores every rule and cuts on the model score at the threshold that reviews the same share of traffic as the shipped system - comparing detectors at their own natural thresholds compares two different budgets and answers nothing. `model only without rule features` retrains after dropping signal_count, max_severity_rank, distinct_signal_families, because a model fed the rule engine's own output is not an independent detector and scoring it as one flatters both."
+  },
+  "ablation": {
+    "baseline": {
+      "recall_pct": 96.47,
+      "precision_pct": 77.83,
+      "false_positive_rate_pct": 7.62,
+      "manual_review_rate_pct": 26.92,
+      "auto_release_leakage_pct": 1.05,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1257,
+      "fp": 358,
+      "fn": 46,
+      "tn": 4339
+    },
+    "rules": [
+      {
+        "rule_id": "R101_DUPLICATE_IDEMPOTENCY",
+        "severity": "high",
+        "fired": 138,
+        "recall_without_pct": 88.18,
+        "recall_lost_pct": 8.29,
+        "review_rate_without_pct": 25.12,
+        "review_rate_saved_pct": 1.8
+      },
+      {
+        "rule_id": "R401_FX_OUT_OF_TOLERANCE",
+        "severity": "high",
+        "fired": 109,
+        "recall_without_pct": 89.03,
+        "recall_lost_pct": 7.44,
+        "review_rate_without_pct": 25.3,
+        "review_rate_saved_pct": 1.62
+      },
+      {
+        "rule_id": "R801_MISSING_EVIDENCE",
+        "severity": "medium",
+        "fired": 90,
+        "recall_without_pct": 90.18,
+        "recall_lost_pct": 6.29,
+        "review_rate_without_pct": 25.55,
+        "review_rate_saved_pct": 1.37
+      },
+      {
+        "rule_id": "R102_AUTH_CAPTURE_GAP",
+        "severity": "medium",
+        "fired": 79,
+        "recall_without_pct": 90.94,
+        "recall_lost_pct": 5.53,
+        "review_rate_without_pct": 25.72,
+        "review_rate_saved_pct": 1.2
+      },
+      {
+        "rule_id": "R601_REFUND_CHAIN",
+        "severity": "medium",
+        "fired": 71,
+        "recall_without_pct": 91.56,
+        "recall_lost_pct": 4.91,
+        "review_rate_without_pct": 25.85,
+        "review_rate_saved_pct": 1.07
+      },
+      {
+        "rule_id": "R201_WALLET_VELOCITY",
+        "severity": "high",
+        "fired": 62,
+        "recall_without_pct": 91.94,
+        "recall_lost_pct": 4.53,
+        "review_rate_without_pct": 25.93,
+        "review_rate_saved_pct": 0.99
+      },
+      {
+        "rule_id": "R602_DOUBLE_CREDIT",
+        "severity": "critical",
+        "fired": 66,
+        "recall_without_pct": 91.94,
+        "recall_lost_pct": 4.53,
+        "review_rate_without_pct": 25.93,
+        "review_rate_saved_pct": 0.99
+      },
+      {
+        "rule_id": "R302_DEVICE_HOPPING",
+        "severity": "high",
+        "fired": 84,
+        "recall_without_pct": 92.02,
+        "recall_lost_pct": 4.45,
+        "review_rate_without_pct": 25.95,
+        "review_rate_saved_pct": 0.97
+      },
+      {
+        "rule_id": "R402_FEE_OFF_SCHEDULE",
+        "severity": "medium",
+        "fired": 66,
+        "recall_without_pct": 92.17,
+        "recall_lost_pct": 4.3,
+        "review_rate_without_pct": 25.98,
+        "review_rate_saved_pct": 0.94
+      },
+      {
+        "rule_id": "R403_STALE_FX_QUOTE",
+        "severity": "medium",
+        "fired": 68,
+        "recall_without_pct": 92.25,
+        "recall_lost_pct": 4.22,
+        "review_rate_without_pct": 26.0,
+        "review_rate_saved_pct": 0.92
+      },
+      {
+        "rule_id": "R701_SHARED_PAYOUT_ACCOUNT",
+        "severity": "medium",
+        "fired": 494,
+        "recall_without_pct": 92.25,
+        "recall_lost_pct": 4.22,
+        "review_rate_without_pct": 21.85,
+        "review_rate_saved_pct": 5.07
+      },
+      {
+        "rule_id": "R303_IMPOSSIBLE_TRAVEL",
+        "severity": "critical",
+        "fired": 125,
+        "recall_without_pct": 93.02,
+        "recall_lost_pct": 3.45,
+        "review_rate_without_pct": 26.03,
+        "review_rate_saved_pct": 0.89
+      },
+      {
+        "rule_id": "R501_MCC_TICKET_ANOMALY",
+        "severity": "high",
+        "fired": 147,
+        "recall_without_pct": 93.63,
+        "recall_lost_pct": 2.84,
+        "review_rate_without_pct": 26.3,
+        "review_rate_saved_pct": 0.62
+      },
+      {
+        "rule_id": "R802_UNTRUSTED_INSTRUCTIONS",
+        "severity": "high",
+        "fired": 56,
+        "recall_without_pct": 94.01,
+        "recall_lost_pct": 2.46,
+        "review_rate_without_pct": 26.38,
+        "review_rate_saved_pct": 0.54
+      },
+      {
+        "rule_id": "R803_AUTHORITY_CLAIM",
+        "severity": "high",
+        "fired": 24,
+        "recall_without_pct": 96.24,
+        "recall_lost_pct": 0.23,
+        "review_rate_without_pct": 26.87,
+        "review_rate_saved_pct": 0.05
+      },
+      {
+        "rule_id": "R103_QUARANTINED_EVENTS",
+        "severity": "low",
+        "fired": 61,
+        "recall_without_pct": 96.47,
+        "recall_lost_pct": 0.0,
+        "review_rate_without_pct": 26.9,
+        "review_rate_saved_pct": 0.02
+      },
+      {
+        "rule_id": "R202_AMOUNT_ANOMALY",
+        "severity": "high",
+        "fired": 146,
+        "recall_without_pct": 96.47,
+        "recall_lost_pct": 0.0,
+        "review_rate_without_pct": 26.35,
+        "review_rate_saved_pct": 0.57
+      },
+      {
+        "rule_id": "R301_GEO_MISMATCH",
+        "severity": "low",
+        "fired": 736,
+        "recall_without_pct": 96.47,
+        "recall_lost_pct": 0.0,
+        "review_rate_without_pct": 26.82,
+        "review_rate_saved_pct": 0.1
+      },
+      {
+        "rule_id": "R304_JURISDICTION_CONFLICT",
+        "severity": "high",
+        "fired": 85,
+        "recall_without_pct": 96.47,
+        "recall_lost_pct": 0.0,
+        "review_rate_without_pct": 26.92,
+        "review_rate_saved_pct": 0.0
+      },
+      {
+        "rule_id": "R702_SHARED_FUNDING_ACCOUNT",
+        "severity": "medium",
+        "fired": 11,
+        "recall_without_pct": 96.47,
+        "recall_lost_pct": 0.0,
+        "review_rate_without_pct": 26.88,
+        "review_rate_saved_pct": 0.04
+      }
+    ],
+    "note": "Ablation removes the rule's signals from the *policy* while keeping the model as it was trained - with that rule's features included. A full ablation would retrain per rule and take twenty times as long. So `recall lost` is the rule's direct contribution to routing, and slightly understates its total contribution."
+  },
+  "threshold_curve": [
+    {
+      "auto_release_below": 0.05,
+      "recall_pct": 100.0,
+      "precision_pct": 59.09,
+      "false_positive_rate_pct": 19.2,
+      "manual_review_rate_pct": 36.75,
+      "auto_release_leakage_pct": 0.0,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1303,
+      "fp": 902,
+      "fn": 0,
+      "tn": 3795
+    },
+    {
+      "auto_release_below": 0.1,
+      "recall_pct": 99.69,
+      "precision_pct": 61.59,
+      "false_positive_rate_pct": 17.25,
+      "manual_review_rate_pct": 35.15,
+      "auto_release_leakage_pct": 0.1,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1299,
+      "fp": 810,
+      "fn": 4,
+      "tn": 3887
+    },
+    {
+      "auto_release_below": 0.15,
+      "recall_pct": 97.47,
+      "precision_pct": 69.97,
+      "false_positive_rate_pct": 11.6,
+      "manual_review_rate_pct": 30.25,
+      "auto_release_leakage_pct": 0.79,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1270,
+      "fp": 545,
+      "fn": 33,
+      "tn": 4152
+    },
+    {
+      "auto_release_below": 0.2,
+      "recall_pct": 96.55,
+      "precision_pct": 75.33,
+      "false_positive_rate_pct": 8.77,
+      "manual_review_rate_pct": 27.83,
+      "auto_release_leakage_pct": 1.04,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1258,
+      "fp": 412,
+      "fn": 45,
+      "tn": 4285
+    },
+    {
+      "auto_release_below": 0.25,
+      "recall_pct": 96.47,
+      "precision_pct": 77.83,
+      "false_positive_rate_pct": 7.62,
+      "manual_review_rate_pct": 26.92,
+      "auto_release_leakage_pct": 1.05,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1257,
+      "fp": 358,
+      "fn": 46,
+      "tn": 4339
+    },
+    {
+      "auto_release_below": 0.3,
+      "recall_pct": 96.24,
+      "precision_pct": 81.01,
+      "false_positive_rate_pct": 6.26,
+      "manual_review_rate_pct": 25.8,
+      "auto_release_leakage_pct": 1.1,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1254,
+      "fp": 294,
+      "fn": 49,
+      "tn": 4403
+    },
+    {
+      "auto_release_below": 0.35,
+      "recall_pct": 94.09,
+      "precision_pct": 87.51,
+      "false_positive_rate_pct": 3.73,
+      "manual_review_rate_pct": 23.35,
+      "auto_release_leakage_pct": 1.67,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1226,
+      "fp": 175,
+      "fn": 77,
+      "tn": 4522
+    },
+    {
+      "auto_release_below": 0.4,
+      "recall_pct": 92.25,
+      "precision_pct": 91.55,
+      "false_positive_rate_pct": 2.36,
+      "manual_review_rate_pct": 21.88,
+      "auto_release_leakage_pct": 2.15,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1202,
+      "fp": 111,
+      "fn": 101,
+      "tn": 4586
+    },
+    {
+      "auto_release_below": 0.45,
+      "recall_pct": 90.79,
+      "precision_pct": 91.85,
+      "false_positive_rate_pct": 2.24,
+      "manual_review_rate_pct": 21.47,
+      "auto_release_leakage_pct": 2.55,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 1183,
+      "fp": 105,
+      "fn": 120,
+      "tn": 4592
+    },
+    {
+      "auto_release_below": 0.5,
+      "recall_pct": 72.91,
+      "precision_pct": 94.25,
+      "false_positive_rate_pct": 1.23,
+      "manual_review_rate_pct": 16.8,
+      "auto_release_leakage_pct": 7.07,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 950,
+      "fp": 58,
+      "fn": 353,
+      "tn": 4639
+    },
+    {
+      "auto_release_below": 0.55,
+      "recall_pct": 71.83,
+      "precision_pct": 94.45,
+      "false_positive_rate_pct": 1.17,
+      "manual_review_rate_pct": 16.52,
+      "auto_release_leakage_pct": 7.33,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 936,
+      "fp": 55,
+      "fn": 367,
+      "tn": 4642
+    },
+    {
+      "auto_release_below": 0.6,
+      "recall_pct": 71.53,
+      "precision_pct": 94.43,
+      "false_positive_rate_pct": 1.17,
+      "manual_review_rate_pct": 16.45,
+      "auto_release_leakage_pct": 7.4,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 932,
+      "fp": 55,
+      "fn": 371,
+      "tn": 4642
+    },
+    {
+      "auto_release_below": 0.65,
+      "recall_pct": 70.53,
+      "precision_pct": 94.35,
+      "false_positive_rate_pct": 1.17,
+      "manual_review_rate_pct": 16.23,
+      "auto_release_leakage_pct": 7.64,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 919,
+      "fp": 55,
+      "fn": 384,
+      "tn": 4642
+    },
+    {
+      "auto_release_below": 0.7,
+      "recall_pct": 70.53,
+      "precision_pct": 94.35,
+      "false_positive_rate_pct": 1.17,
+      "manual_review_rate_pct": 16.23,
+      "auto_release_leakage_pct": 7.64,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 919,
+      "fp": 55,
+      "fn": 384,
+      "tn": 4642
+    },
+    {
+      "auto_release_below": 0.75,
+      "recall_pct": 70.53,
+      "precision_pct": 94.35,
+      "false_positive_rate_pct": 1.17,
+      "manual_review_rate_pct": 16.23,
+      "auto_release_leakage_pct": 7.64,
+      "actionable_base_rate_pct": 21.72,
+      "tp": 919,
+      "fp": 55,
+      "fn": 384,
+      "tn": 4642
+    }
+  ],
+  "seed_sweep": {
+    "seeds": [
+      20260815,
+      20268734,
+      20276653,
+      20284572,
+      20292491
+    ],
+    "runs": [
+      {
+        "recall_pct": 96.47,
+        "precision_pct": 77.83,
+        "false_positive_rate_pct": 7.62,
+        "manual_review_rate_pct": 26.92,
+        "auto_release_leakage_pct": 1.05,
+        "actionable_base_rate_pct": 21.72,
+        "tp": 1257,
+        "fp": 358,
+        "fn": 46,
+        "tn": 4339,
+        "seed": 20260815,
+        "transactions": 6000,
+        "model_test_recall": 0.9634
+      },
+      {
+        "recall_pct": 97.16,
+        "precision_pct": 81.9,
+        "false_positive_rate_pct": 6.38,
+        "manual_review_rate_pct": 27.17,
+        "auto_release_leakage_pct": 0.89,
+        "actionable_base_rate_pct": 22.9,
+        "tp": 1335,
+        "fp": 295,
+        "fn": 39,
+        "tn": 4331,
+        "seed": 20268734,
+        "transactions": 6000,
+        "model_test_recall": 0.9657
+      },
+      {
+        "recall_pct": 97.41,
+        "precision_pct": 80.76,
+        "false_positive_rate_pct": 6.73,
+        "manual_review_rate_pct": 27.12,
+        "auto_release_leakage_pct": 0.8,
+        "actionable_base_rate_pct": 22.48,
+        "tp": 1314,
+        "fp": 313,
+        "fn": 35,
+        "tn": 4338,
+        "seed": 20276653,
+        "transactions": 6000,
+        "model_test_recall": 0.9674
+      },
+      {
+        "recall_pct": 96.66,
+        "precision_pct": 79.9,
+        "false_positive_rate_pct": 6.83,
+        "manual_review_rate_pct": 26.53,
+        "auto_release_leakage_pct": 1.0,
+        "actionable_base_rate_pct": 21.93,
+        "tp": 1272,
+        "fp": 320,
+        "fn": 44,
+        "tn": 4364,
+        "seed": 20284572,
+        "transactions": 6000,
+        "model_test_recall": 0.9636
+      },
+      {
+        "recall_pct": 97.36,
+        "precision_pct": 79.89,
+        "false_positive_rate_pct": 7.2,
+        "manual_review_rate_pct": 27.68,
+        "auto_release_leakage_pct": 0.83,
+        "actionable_base_rate_pct": 22.72,
+        "tp": 1327,
+        "fp": 334,
+        "fn": 36,
+        "tn": 4303,
+        "seed": 20292491,
+        "transactions": 6000,
+        "model_test_recall": 0.9588
+      }
+    ],
+    "spread": {
+      "recall_pct": {
+        "mean": 97.01,
+        "stdev": 0.42,
+        "min": 96.47,
+        "max": 97.41
+      },
+      "precision_pct": {
+        "mean": 80.06,
+        "stdev": 1.49,
+        "min": 77.83,
+        "max": 81.9
+      },
+      "false_positive_rate_pct": {
+        "mean": 6.95,
+        "stdev": 0.47,
+        "min": 6.38,
+        "max": 7.62
+      },
+      "manual_review_rate_pct": {
+        "mean": 27.08,
+        "stdev": 0.42,
+        "min": 26.53,
+        "max": 27.68
+      },
+      "auto_release_leakage_pct": {
+        "mean": 0.91,
+        "stdev": 0.11,
+        "min": 0.8,
+        "max": 1.05
+      },
+      "actionable_base_rate_pct": {
+        "mean": 22.35,
+        "stdev": 0.51,
+        "min": 21.72,
+        "max": 22.9
+      }
+    },
+    "note": "Each seed is an independently generated world of the same size and scenario mix. The spread is the variance of this system over that generator, not over real payment traffic - a different generator would produce a different spread."
   },
   "caveats": [
     "Every transaction, merchant, wallet, device and label is synthetic. Nothing here has touched a real payment network, bank, merchant or customer.",

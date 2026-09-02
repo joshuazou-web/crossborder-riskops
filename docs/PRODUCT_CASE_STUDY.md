@@ -166,7 +166,9 @@ Seed `20260815`, 6,000 synthetic transactions, 21.72% actionable.
 
 | Question | Answer |
 | --- | --- |
-| Does it catch what it should? | Recall **96.47%**; 46 of 1,303 actionable transactions were auto-released |
+| Does it catch what it should? | Recall **97.01% ± 0.42%** across 5 generated worlds; on the shipped seed, 46 of 1,303 actionable transactions were auto-released |
+| Did the model earn its place? | **Barely, and now there is a number:** +0.0 pp recall, +2.52 pp precision against an honestly rescaled rules-only baseline. Blinded to the rule engine's output it manages 68.53% recall |
+| Which rules are load-bearing? | Duplicate detection (−8.29 pp recall without it), FX tolerance (−7.44 pp), missing evidence (−6.29 pp) |
 | What does that cost? | **26.92%** of traffic reviewed; **7.62%** of benign traffic reviewed |
 | Is the queue clean enough to trust? | Precision **77.83%** — roughly four in five reviews were justified |
 | Which scenarios fail? | `impossible_travel` at 61.9% per transaction, because the first leg of a hop has no evidence until the second arrives; every other actionable scenario is at 100% |
@@ -191,5 +193,8 @@ describe this system on this synthetic population. Nothing more.
 4. **Time-to-decision as the primary metric.** Recall and precision are the model's metrics. What an
    operations lead actually manages is queue latency, and the product should optimise for it
    explicitly.
-5. **Feedback into the rules.** Every overturned hold is a labelled example of a rule that was
+5. **A rule-level cost curve.** The ablation shows what each rule contributes to recall and what
+   it costs in review rate. Turning that into a per-rule "is this rule worth keeping" view would
+   make rule retirement a routine decision instead of something nobody dares do.
+6. **Feedback into the rules.** Every overturned hold is a labelled example of a rule that was
    wrong. Nothing currently closes that loop.

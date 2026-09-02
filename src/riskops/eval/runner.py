@@ -47,6 +47,15 @@ from ..risk.rules import RULES, RULES_VERSION
 from ..statemachine import TRANSITIONS, replay
 from ..taxonomy import TAXONOMY_VERSION
 from .datasets import DATASET_VERSION, INPUT_ATTACKS, OUTPUT_ATTACKS, ScriptedProvider
+from .robustness import (
+    ROBUSTNESS_VERSION,
+    format_spread,
+    frames_from_warehouse,
+    run_ablation,
+    run_baselines,
+    run_seed_sweep,
+    sweep_thresholds,
+)
 
 EVAL_VERSION = "1.0.0"
 
@@ -525,7 +534,11 @@ CAVEATS: tuple[str, ...] = (
 )
 
 
-def run_evaluation(settings: Settings, sample_limit: int | None = None) -> dict[str, Any]:
+def run_evaluation(
+    settings: Settings,
+    sample_limit: int | None = None,
+    sweep_seeds: list[int] | None = None,
+) -> dict[str, Any]:
     started = datetime.now().replace(microsecond=0)
     with session(settings) as con:
         detection = suite_risk_detection(con)
@@ -533,6 +546,20 @@ def run_evaluation(settings: Settings, sample_limit: int | None = None) -> dict[
         ai_quality = suite_ai_quality(con, sample_limit)
         safety = suite_agent_safety(settings, con)
         operations = suite_operations(con)
+
+        # Baselines and ablation read the world that is already built, so they
+        # cost a second rather than a minute and describe the data actually on
+        # the dashboard.
+        frames = frames_from_warehouse(con, settings.random_seed)
+        baselines = run_baselines(settings, frames)
+        ablation = run_ablation(settings, frames)
+        threshold_curve = sweep_thresholds(
+            settings, frames.transactions, frames.signals, frames.scores,
+            [round(x / 100, 2) for x in range(5, 76, 5)],
+        )
+
+    # The seed sweep regenerates a whole world per seed, so it is opt-in.
+    sweep = run_seed_sweep(settings, sweep_seeds) if sweep_seeds else None
 
     headline = {
         "recall_pct": detection.get("recall_pct"),
@@ -550,6 +577,18 @@ def run_evaluation(settings: Settings, sample_limit: int | None = None) -> dict[
         "false_positive_recovery_pct": operations.get("false_positive_recovery_pct"),
         "audit_chain_status": operations.get("audit_chain_status"),
     }
+    if sweep:
+        # Once a spread is known, the headline is the spread. A bare 96.47%
+        # implies a precision that one run never measured.
+        headline["recall_across_seeds"] = format_spread(sweep["spread"], "recall_pct")
+        headline["precision_across_seeds"] = format_spread(sweep["spread"], "precision_pct")
+        headline["review_rate_across_seeds"] = format_spread(
+            sweep["spread"], "manual_review_rate_pct"
+        )
+    headline["model_recall_contribution_pct"] = \
+        baselines["model_contribution"]["recall_delta_pct"]
+    headline["model_review_rate_cost_pct"] = \
+        baselines["model_contribution"]["review_rate_delta_pct"]
 
     return {
         "generated_at": started.isoformat(),
@@ -560,6 +599,7 @@ def run_evaluation(settings: Settings, sample_limit: int | None = None) -> dict[
             "rules": RULES_VERSION,
             "policy": POLICY_VERSION,
             "generator": GENERATOR_VERSION,
+            "robustness": ROBUSTNESS_VERSION,
             "python": sys.version.split()[0],
             "platform": platform.system(),
         },
@@ -583,6 +623,10 @@ def run_evaluation(settings: Settings, sample_limit: int | None = None) -> dict[
         "ai_quality": ai_quality,
         "agent_safety": safety,
         "operations": operations,
+        "baselines": baselines,
+        "ablation": ablation,
+        "threshold_curve": threshold_curve,
+        "seed_sweep": sweep,
         "caveats": list(CAVEATS),
     }
 
@@ -653,6 +697,10 @@ def write_report(settings: Settings, results: dict[str, Any]) -> Path:
 
     add("## Headline")
     add("")
+    if results.get("seed_sweep"):
+        add("Figures ending in `across_seeds` are the ones to quote. The bare percentages are "
+            "a single run.")
+        add("")
     add(_table(
         [{"metric": k.replace("_", " "), "value": v} for k, v in headline.items()],
         [("metric", "Metric"), ("value", "Value")],
@@ -702,6 +750,112 @@ def write_report(settings: Settings, results: dict[str, Any]) -> Path:
         ("rule_id", "Rule"), ("family", "Family"), ("severity", "Severity"),
         ("fired", "Fired"), ("precision_pct", "Precision %"),
     ]))
+    add("")
+
+    add("## 1b. Robustness: is this number the system, or is it luck?")
+    add("")
+    sweep = results.get("seed_sweep")
+    if sweep:
+        add(f"The whole world was regenerated and re-scored under {len(sweep['seeds'])} "
+            "independent seeds. **The spread is the headline; the single run above is one "
+            "sample of it.**")
+        add("")
+        add(_table([
+            {
+                "metric": metric.replace("_pct", "").replace("_", " "),
+                "mean": f"{values['mean']}%",
+                "stdev": f"± {values['stdev']}",
+                "min": f"{values['min']}%",
+                "max": f"{values['max']}%",
+            }
+            for metric, values in sweep["spread"].items()
+        ], [("metric", "Metric"), ("mean", "Mean"), ("stdev", "Std dev"),
+            ("min", "Min"), ("max", "Max")]))
+        add("")
+        add("Per seed:")
+        add("")
+        add(_table(sweep["runs"], [
+            ("seed", "Seed"), ("transactions", "Transactions"),
+            ("actionable_base_rate_pct", "Base rate %"), ("recall_pct", "Recall %"),
+            ("precision_pct", "Precision %"), ("manual_review_rate_pct", "Review rate %"),
+        ]))
+        add("")
+        add(f"> {sweep['note']}")
+    else:
+        add("**Not run.** The figures above come from a single seed, which says nothing about "
+            "how much of them is luck. Run `python -m riskops eval --seeds 5` to regenerate this "
+            "section with a mean and a standard deviation across independently generated worlds.")
+    add("")
+
+    add("## 1c. Baselines: what did each component actually contribute?")
+    add("")
+    baselines = results["baselines"]
+    add("A system with two detectors that only ever reports their combined output makes "
+        "\"we added a model\" an unevaluable action. These four configurations answer it.")
+    add("")
+    add(_table(baselines["configurations"], [
+        ("configuration", "Configuration"), ("recall_pct", "Recall %"),
+        ("precision_pct", "Precision %"), ("false_positive_rate_pct", "FP rate %"),
+        ("manual_review_rate_pct", "Review rate %"),
+    ]))
+    add("")
+    contribution = baselines["model_contribution"]
+    add(f"**The model's contribution**, measured against `{contribution['measured_against']}`: "
+        f"**{contribution['recall_delta_pct']:+} pp recall**, "
+        f"**{contribution['precision_delta_pct']:+} pp precision**, "
+        f"**{contribution['review_rate_delta_pct']:+} pp review rate**.")
+    add("")
+    add("Three things in that table are worth reading carefully, because each is a way this "
+        "comparison could have been made to lie:")
+    add("")
+    add(f"1. **`rules only, thresholds unchanged` looks catastrophic and is misleading.** "
+        f"The shipped policy scores `{baselines['rule_weight']} x rule_score + "
+        f"{round(1 - baselines['rule_weight'], 2)} x model_score` against one threshold, so "
+        f"muting the model knocks up to {round(1 - baselines['rule_weight'], 2)} off every "
+        f"transaction while the threshold stays put. Quoting the "
+        f"{results['baselines']['naive_comparison']['recall_delta_pct']:+} pp gap as the "
+        "model's contribution would credit it with arithmetic.")
+    add(f"2. **`rules only, threshold rescaled`** puts the threshold at "
+        f"`{baselines['rescaled_release_threshold']}` so a rule score meets the same effective "
+        "cut it met inside the blend. This is the honest baseline, and against it the model is "
+        "worth a couple of points of precision - not a detection gain.")
+    add("3. **`model only, matched review rate` is not a rule-free detector.** Three of the "
+        f"model's features - {', '.join(f'`{f}`' for f in baselines['rule_derived_features'])} "
+        "- *are* the rule engine's output. Scoring that as an independent baseline flatters "
+        "both. The row beneath it retrains with those features blinded, and that is the "
+        "configuration that answers whether the model can find risk the rules did not.")
+    add("")
+    add(f"> {baselines['note']}")
+    add("")
+
+    add("## 1d. Ablation: which rules are load-bearing?")
+    add("")
+    ablation = results["ablation"]
+    add("Each row removes one rule and re-runs routing. `Recall lost` is what the system stops "
+        "catching without it; `review rate saved` is what it costs to keep.")
+    add("")
+    add(_table(ablation["rules"], [
+        ("rule_id", "Rule"), ("severity", "Severity"), ("fired", "Fired"),
+        ("recall_lost_pct", "Recall lost (pp)"),
+        ("review_rate_saved_pct", "Review rate saved (pp)"),
+    ]))
+    add("")
+    add(f"> {ablation['note']}")
+    add("")
+
+    add("## 1e. The threshold trade-off")
+    add("")
+    add("The auto-release threshold is a product decision, not a tuning parameter: it sets how "
+        "much traffic a person has to look at, and how much actionable traffic slips past "
+        "unlooked-at. The same curve is draggable on the **Policy Tuning** page.")
+    add("")
+    curve = results.get("threshold_curve", [])
+    add(_table(
+        [row for row in curve if round(row["auto_release_below"] * 100) % 10 == 0],
+        [("auto_release_below", "Release below"), ("recall_pct", "Recall %"),
+         ("precision_pct", "Precision %"), ("manual_review_rate_pct", "Review rate %"),
+         ("auto_release_leakage_pct", "Leakage %")],
+    ))
     add("")
 
     add("## 2. Money, lifecycle and reproducibility")

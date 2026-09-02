@@ -173,7 +173,14 @@ def cmd_eval(args: argparse.Namespace) -> int:
     from .eval.runner import run_evaluation, write_report
 
     settings = get_settings()
-    results = run_evaluation(settings, sample_limit=args.limit)
+    sweep_seeds = None
+    if args.seeds:
+        # Deterministic and reported: derived from the configured seed so the
+        # sweep itself is reproducible, not a fresh set of random numbers.
+        sweep_seeds = [settings.random_seed + offset * 7919 for offset in range(args.seeds)]
+        print(f"Running a {args.seeds}-seed sweep. Each seed rebuilds a whole world; "
+              "expect about a minute per seed.")
+    results = run_evaluation(settings, sample_limit=args.limit, sweep_seeds=sweep_seeds)
     path = write_report(settings, results)
     print(json.dumps(results["headline"], indent=2))
     print(f"\nreport: {path}")
@@ -248,6 +255,9 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate = sub.add_parser("eval", help="run the evaluation harness and write the report")
     evaluate.add_argument("--limit", type=int, default=None,
                           help="cap the number of cases scored (for a quick run)")
+    evaluate.add_argument("--seeds", type=int, default=0, metavar="N",
+                          help="also run an N-seed robustness sweep (about a minute per seed); "
+                               "without it the report quotes a single run and says so")
     evaluate.set_defaults(func=cmd_eval)
 
     export = sub.add_parser("export", help="export every mart table to CSV")

@@ -76,13 +76,40 @@ class TestReadmeMatchesEvaluation:
         money = evaluation["money_and_state"]
         operations = evaluation["operations"]
 
+        sweep = evaluation.get("seed_sweep")
+
+        # Whichever figure is authoritative is the one the README must quote.
+        # Once a spread exists, quoting a single run instead is the mistake this
+        # test is here to catch - so the expectation follows the sweep.
+        if sweep:
+            from riskops.eval.robustness import format_spread
+            authoritative = {
+                f"{name} (spread)": format_spread(sweep["spread"], metric)
+                for name, metric in [
+                    ("recall", "recall_pct"),
+                    ("precision", "precision_pct"),
+                    ("false positive rate", "false_positive_rate_pct"),
+                    ("manual review rate", "manual_review_rate_pct"),
+                    ("auto release leakage", "auto_release_leakage_pct"),
+                    ("actionable base rate", "actionable_base_rate_pct"),
+                ]
+            }
+        else:
+            authoritative = {
+                "recall": f"{detection['recall_pct']}%",
+                "precision": f"{detection['precision_pct']}%",
+                "false positive rate": f"{detection['false_positive_rate_pct']}%",
+                "manual review rate": f"{detection['manual_review_rate_pct']}%",
+                "auto release leakage": f"{detection['auto_release_leakage_pct']}%",
+                "actionable base rate": f"{detection['actionable_base_rate_pct']}%",
+            }
+
         expected = {
-            "recall": f"{detection['recall_pct']}%",
-            "precision": f"{detection['precision_pct']}%",
-            "false positive rate": f"{detection['false_positive_rate_pct']}%",
-            "manual review rate": f"{detection['manual_review_rate_pct']}%",
-            "auto release leakage": f"{detection['auto_release_leakage_pct']}%",
-            "actionable base rate": f"{detection['actionable_base_rate_pct']}%",
+            **authoritative,
+            # The shipped seed's own recall and precision stay quoted too, because
+            # the README names it as the worst of the five.
+            "shipped-seed recall": f"{detection['recall_pct']}%",
+            "shipped-seed precision": f"{detection['precision_pct']}%",
             "briefs scored": f"{ai['briefs_scored']:,}",
             "abstention rate": f"{ai['abstention_rate_pct']}%",
             "ai human agreement": f"{ai['ai_human_agreement_pct']}%",
@@ -95,6 +122,19 @@ class TestReadmeMatchesEvaluation:
             "sla breach": f"{operations['sla_breach_pct']}%",
             "false positive recovery": f"{operations['false_positive_recovery_pct']}%",
         }
+
+        baselines = evaluation.get("baselines")
+        if baselines:
+            contribution = baselines["model_contribution"]
+            expected["model recall delta"] = f"{contribution['recall_delta_pct']}"
+            expected["model precision delta"] = f"{contribution['precision_delta_pct']}"
+            blind = next(
+                (row for row in baselines["configurations"]
+                 if "blinded" in row["configuration"] or "without rule" in row["configuration"]),
+                None,
+            )
+            if blind:
+                expected["rule-blind model recall"] = f"{blind['recall_pct']}%"
 
         missing = [
             f"{label}: expected {value!r} in the README"

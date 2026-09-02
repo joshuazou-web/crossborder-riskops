@@ -31,6 +31,9 @@ PAGES: list[tuple[str, str, int]] = [
     ("04-audit-log.png", "/Audit_Log", 8),
     ("05-transaction-explorer.png", "/Transaction_Explorer", 7),
     ("06-evaluation.png", "/Evaluation", 8),
+    # The tuning page computes a 36-point policy curve on first load, so it needs
+    # longer to settle than the others.
+    ("07-policy-tuning.png", "/Policy_Tuning", 14),
 ]
 
 

@@ -87,6 +87,18 @@ toward over-blocking because that is the cheap mistake under time pressure.
 agreement, appeal volume, false-positive recovery — is a property of those parameters. Change the
 error rate and every one of them moves. **They describe a simulation, not a team.**
 
+### Variance is now measured, and it is small
+
+Earlier versions of this file quoted single-run figures. `python -m riskops eval --seeds 5`
+regenerates the whole world under five independent seeds: recall **97.01% ± 0.42%**, precision
+**80.06% ± 1.49%**, review rate **27.08% ± 0.42%**.
+
+Two things worth stating plainly. The seed this repository ships with is the **worst of the five**
+on both recall and precision, so nothing here was seed-shopped. And a standard deviation this
+small is a property of a generator that draws every world from the same scenario mix — it is
+*not* evidence that the system would be this stable on real traffic, where the population shifts
+week to week.
+
 ### Latency is not meaningful
 
 P95 brief latency is measured against the mock and is effectively zero. It says nothing about a real
@@ -111,8 +123,12 @@ Stated here rather than discovered by a reviewer:
 3. **The geography rule is deliberately weak** (low severity), because at medium it routed
    essentially every legitimate traveller to a human. That is the correct trade-off for this
    population and it would need re-tuning for any other.
-4. **The model adds little over the rules on this data**, and the report shows it. It earns its
-   place by suppressing single-low-signal noise, not by finding anything the rules missed.
+4. **The model adds little over the rules on this data, and this is now measured rather than
+   asserted.** Against the honest baseline it is worth +0.0 pp recall and +2.52 pp precision;
+   blinded to the three features that are the rule engine's own output it manages only 68.53%
+   recall at 55.26% precision. It earns its place by suppressing single-low-signal noise, not by
+   finding anything the rules missed. Anyone quoting the naive "delete the model" comparison
+   (+24.56 pp recall) would be quoting the blend arithmetic, not the model.
 5. **Incremental refresh is not implemented.** Every run rebuilds the world from the seed, which is
    also why the audit log of that world is rebuilt with it. A real system never truncates an audit
    log; this one does, because the log is a property of a generated dataset rather than a record of

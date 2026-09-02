@@ -2,7 +2,7 @@
 
 > **Generated file - do not edit by hand.** Every number below is written by
 > `python -m riskops eval`, which reads the warehouse built by `python -m riskops demo`.
-> Generated 2026-09-02T11:13:05 from seed `20260815`.
+> Generated 2026-09-02T14:49:33 from seed `20260815`.
 
 ## Read this first
 
@@ -29,7 +29,7 @@
 | FX tolerance | 75 bps |
 | AI confidence floor | 0.55 |
 | LLM provider | mock |
-| Versions | taxonomy 1.0.0, rules 1.0.0, policy 1.0.0, generator 1.0.0, python 3.13.14, platform Windows |
+| Versions | taxonomy 1.0.0, rules 1.0.0, policy 1.0.0, generator 1.0.0, robustness 1.0.0, python 3.13.14, platform Windows |
 
 Reproduce with:
 
@@ -38,6 +38,8 @@ python -m riskops demo && python -m riskops eval
 ```
 
 ## Headline
+
+Figures ending in `across_seeds` are the ones to quote. The bare percentages are a single run.
 
 | Metric | Value |
 | --- | --- |
@@ -55,6 +57,11 @@ python -m riskops demo && python -m riskops eval
 | decisions committed by ai | 0 |
 | false positive recovery pct | 53.33 |
 | audit chain status | verified |
+| recall across seeds | 97.01% ± 0.42% |
+| precision across seeds | 80.06% ± 1.49% |
+| review rate across seeds | 27.08% ± 0.42% |
+| model recall contribution pct | 0.0 |
+| model review rate cost pct | -0.9 |
 
 ## 1. Risk detection
 
@@ -128,13 +135,103 @@ low-severity rule is meant to be a weak indicator that only matters in combinati
 | R102_AUTH_CAPTURE_GAP | integrity | medium | 79 | 100.0 |
 | R601_REFUND_CHAIN | dispute_abuse | medium | 71 | 100.0 |
 | R403_STALE_FX_QUOTE | fx_fee | medium | 68 | 100.0 |
-| R402_FEE_OFF_SCHEDULE | fx_fee | medium | 66 | 100.0 |
 | R602_DOUBLE_CREDIT | dispute_abuse | critical | 66 | 100.0 |
+| R402_FEE_OFF_SCHEDULE | fx_fee | medium | 66 | 100.0 |
 | R201_WALLET_VELOCITY | velocity | high | 62 | 100.0 |
 | R103_QUARANTINED_EVENTS | integrity | low | 61 | 21.31 |
 | R802_UNTRUSTED_INSTRUCTIONS | completeness | high | 56 | 100.0 |
 | R803_AUTHORITY_CLAIM | completeness | high | 24 | 100.0 |
 | R702_SHARED_FUNDING_ACCOUNT | network_linkage | medium | 11 | 45.45 |
+
+## 1b. Robustness: is this number the system, or is it luck?
+
+The whole world was regenerated and re-scored under 5 independent seeds. **The spread is the headline; the single run above is one sample of it.**
+
+| Metric | Mean | Std dev | Min | Max |
+| --- | --- | --- | --- | --- |
+| recall | 97.01% | ± 0.42 | 96.47% | 97.41% |
+| precision | 80.06% | ± 1.49 | 77.83% | 81.9% |
+| false positive rate | 6.95% | ± 0.47 | 6.38% | 7.62% |
+| manual review rate | 27.08% | ± 0.42 | 26.53% | 27.68% |
+| auto release leakage | 0.91% | ± 0.11 | 0.8% | 1.05% |
+| actionable base rate | 22.35% | ± 0.51 | 21.72% | 22.9% |
+
+Per seed:
+
+| Seed | Transactions | Base rate % | Recall % | Precision % | Review rate % |
+| --- | --- | --- | --- | --- | --- |
+| 20260815 | 6000 | 21.72 | 96.47 | 77.83 | 26.92 |
+| 20268734 | 6000 | 22.9 | 97.16 | 81.9 | 27.17 |
+| 20276653 | 6000 | 22.48 | 97.41 | 80.76 | 27.12 |
+| 20284572 | 6000 | 21.93 | 96.66 | 79.9 | 26.53 |
+| 20292491 | 6000 | 22.72 | 97.36 | 79.89 | 27.68 |
+
+> Each seed is an independently generated world of the same size and scenario mix. The spread is the variance of this system over that generator, not over real payment traffic - a different generator would produce a different spread.
+
+## 1c. Baselines: what did each component actually contribute?
+
+A system with two detectors that only ever reports their combined output makes "we added a model" an unevaluable action. These four configurations answer it.
+
+| Configuration | Recall % | Precision % | FP rate % | Review rate % |
+| --- | --- | --- | --- | --- |
+| rules only, thresholds unchanged | 71.91 | 94.08 | 1.26 | 16.6 |
+| rules only, threshold rescaled | 96.47 | 75.31 | 8.77 | 27.82 |
+| model only, matched review rate | 96.7 | 77.97 | 7.58 | 26.93 |
+| model only without rule features | 68.53 | 55.26 | 15.39 | 26.93 |
+| rules + model (shipped) | 96.47 | 77.83 | 7.62 | 26.92 |
+
+**The model's contribution**, measured against `rules only, threshold rescaled`: **+0.0 pp recall**, **+2.52 pp precision**, **-0.9 pp review rate**.
+
+Three things in that table are worth reading carefully, because each is a way this comparison could have been made to lie:
+
+1. **`rules only, thresholds unchanged` looks catastrophic and is misleading.** The shipped policy scores `0.7 x rule_score + 0.3 x model_score` against one threshold, so muting the model knocks up to 0.3 off every transaction while the threshold stays put. Quoting the +24.56 pp gap as the model's contribution would credit it with arithmetic.
+2. **`rules only, threshold rescaled`** puts the threshold at `0.175` so a rule score meets the same effective cut it met inside the blend. This is the honest baseline, and against it the model is worth a couple of points of precision - not a detection gain.
+3. **`model only, matched review rate` is not a rule-free detector.** Three of the model's features - `signal_count`, `max_severity_rank`, `distinct_signal_families` - *are* the rule engine's output. Scoring that as an independent baseline flatters both. The row beneath it retrains with those features blinded, and that is the configuration that answers whether the model can find risk the rules did not.
+
+> `rules only` runs the real policy with the model score forced to zero. `model only` ignores every rule and cuts on the model score at the threshold that reviews the same share of traffic as the shipped system - comparing detectors at their own natural thresholds compares two different budgets and answers nothing. `model only without rule features` retrains after dropping signal_count, max_severity_rank, distinct_signal_families, because a model fed the rule engine's own output is not an independent detector and scoring it as one flatters both.
+
+## 1d. Ablation: which rules are load-bearing?
+
+Each row removes one rule and re-runs routing. `Recall lost` is what the system stops catching without it; `review rate saved` is what it costs to keep.
+
+| Rule | Severity | Fired | Recall lost (pp) | Review rate saved (pp) |
+| --- | --- | --- | --- | --- |
+| R101_DUPLICATE_IDEMPOTENCY | high | 138 | 8.29 | 1.8 |
+| R401_FX_OUT_OF_TOLERANCE | high | 109 | 7.44 | 1.62 |
+| R801_MISSING_EVIDENCE | medium | 90 | 6.29 | 1.37 |
+| R102_AUTH_CAPTURE_GAP | medium | 79 | 5.53 | 1.2 |
+| R601_REFUND_CHAIN | medium | 71 | 4.91 | 1.07 |
+| R201_WALLET_VELOCITY | high | 62 | 4.53 | 0.99 |
+| R602_DOUBLE_CREDIT | critical | 66 | 4.53 | 0.99 |
+| R302_DEVICE_HOPPING | high | 84 | 4.45 | 0.97 |
+| R402_FEE_OFF_SCHEDULE | medium | 66 | 4.3 | 0.94 |
+| R403_STALE_FX_QUOTE | medium | 68 | 4.22 | 0.92 |
+| R701_SHARED_PAYOUT_ACCOUNT | medium | 494 | 4.22 | 5.07 |
+| R303_IMPOSSIBLE_TRAVEL | critical | 125 | 3.45 | 0.89 |
+| R501_MCC_TICKET_ANOMALY | high | 147 | 2.84 | 0.62 |
+| R802_UNTRUSTED_INSTRUCTIONS | high | 56 | 2.46 | 0.54 |
+| R803_AUTHORITY_CLAIM | high | 24 | 0.23 | 0.05 |
+| R103_QUARANTINED_EVENTS | low | 61 | 0.0 | 0.02 |
+| R202_AMOUNT_ANOMALY | high | 146 | 0.0 | 0.57 |
+| R301_GEO_MISMATCH | low | 736 | 0.0 | 0.1 |
+| R304_JURISDICTION_CONFLICT | high | 85 | 0.0 | 0.0 |
+| R702_SHARED_FUNDING_ACCOUNT | medium | 11 | 0.0 | 0.04 |
+
+> Ablation removes the rule's signals from the *policy* while keeping the model as it was trained - with that rule's features included. A full ablation would retrain per rule and take twenty times as long. So `recall lost` is the rule's direct contribution to routing, and slightly understates its total contribution.
+
+## 1e. The threshold trade-off
+
+The auto-release threshold is a product decision, not a tuning parameter: it sets how much traffic a person has to look at, and how much actionable traffic slips past unlooked-at. The same curve is draggable on the **Policy Tuning** page.
+
+| Release below | Recall % | Precision % | Review rate % | Leakage % |
+| --- | --- | --- | --- | --- |
+| 0.1 | 99.69 | 61.59 | 35.15 | 0.1 |
+| 0.2 | 96.55 | 75.33 | 27.83 | 1.04 |
+| 0.3 | 96.24 | 81.01 | 25.8 | 1.1 |
+| 0.4 | 92.25 | 91.55 | 21.88 | 2.15 |
+| 0.5 | 72.91 | 94.25 | 16.8 | 7.07 |
+| 0.6 | 71.53 | 94.43 | 16.45 | 7.4 |
+| 0.7 | 70.53 | 94.35 | 16.23 | 7.64 |
 
 ## 2. Money, lifecycle and reproducibility
 
