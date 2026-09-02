@@ -75,6 +75,10 @@ and how do you make that boundary something you can test?**
    disagreed.
 9. **Measures itself.** Every number in this README is produced by `python -m riskops eval`, and a
    test fails if this file drifts from the harness output.
+10. **Reads in English or Chinese.** One click, top-right of every page. The *explanations*
+    translate, not just the labels — they are the argument, and a screen that gives you
+    "26.9% 转人工" and then explains why that number is the cost of the recall in English has
+    translated the wrong half.
 
 ---
 
@@ -232,6 +236,8 @@ They describe the simulation's parameters, not a real team.
 | **Case detail** — evidence on the left, the advisory brief on the right, the decision controls below. | **Audit log** — hash-chained, with the AI-versus-human disagreement matrix. |
 | ![Policy tuning](docs/screenshots/07-policy-tuning.png) | ![Follow-up](docs/screenshots/08-followup.png) |
 | **Policy tuning** — the two automatic thresholds as a product decision, with the recall-against-review-rate curve you are choosing a point on. | **Follow-up** — the analyst's second question, answered from a wider packet, and a request to hand over the decision being refused. |
+| ![Chinese interface](docs/screenshots/09-chinese.png) | ![Evaluation](docs/screenshots/06-evaluation.png) |
+| **中文界面** — one click, top-right. Identifiers, money and generated evidence stay untranslated on purpose. | **Evaluation** — every metric, with the caveats expanded above them rather than in a footnote. |
 
 ---
 
@@ -275,6 +281,10 @@ python -m riskops eval --seeds 5    # ...and the spread across 5 generated world
 python -m riskops export            # every mart table to CSV
 ```
 
+The interface opens in English. The toggle sits at the top-right of every page, and the choice
+travels in the URL — `http://localhost:8501/?lang=zh` opens straight into Chinese, so a link
+carries the language with it.
+
 To try a real model instead of the mock, copy `.env.example` to `.env` and set
 `RISKOPS_LLM_PROVIDER=openai_compatible` with a key. Nothing in the product requires it, and
 results from a real provider are labelled separately in the evaluation report.
@@ -298,6 +308,8 @@ The tests that matter most, by name:
 | `test_over_capture_is_rejected_with_the_numbers_named` | The ledger can be corrupted by a bad feed |
 | `test_editing_one_entry_breaks_the_chain_from_there_on` | The audit log is not tamper-evident |
 | `test_readme_matches_the_evaluation_output` | This README is quoting numbers nothing produced |
+| `test_no_string_is_wrapped_without_a_translation` | The Chinese interface has English holes in it |
+| `test_the_table_has_no_entries_nothing_uses` | A page's wording changed and the translation was left behind |
 
 ---
 

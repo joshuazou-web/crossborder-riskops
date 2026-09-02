@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import plotly.express as px  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner  # noqa: E402
 from riskops.audit.log import AuditLog  # noqa: E402
 from riskops.config import get_settings  # noqa: E402
@@ -18,8 +19,8 @@ entries = frames["audit.audit_log"]
 decisions = frames["audit.decisions"]
 invocations = frames["audit.ai_invocations"]
 
-st.title("Audit Log")
-st.caption("Append-only and hash-chained. Nothing here is ever updated or deleted.")
+st.title(t("Audit Log"))
+st.caption(t("Append-only and hash-chained. Nothing here is ever updated or deleted."))
 synthetic_banner()
 
 # Read-write like every other connection in this app; see app/_shared.py.
@@ -45,28 +46,28 @@ st.divider()
 
 ai_decisions = int((decisions["actor_role"] == "ai_copilot").sum()) if not decisions.empty else 0
 kpi_row([
-    ("Audit entries", f"{len(entries):,}", "Every consequential act."),
-    ("Human decisions", f"{len(decisions):,}", "Committed outcomes with a reason code."),
-    ("AI briefs", f"{len(invocations):,}", "Advisory only."),
-    ("Decisions by an AI actor", str(ai_decisions),
-     "This must be zero. `audit.log.record_decision` refuses any AI actor."),
-    ("Distinct actors", f"{entries['actor_id'].nunique() if not entries.empty else 0}",
-     "People, the policy engine and the pipeline."),
+    (t("Audit entries"), f"{len(entries):,}", t("Every consequential act.")),
+    (t("Human decisions"), f"{len(decisions):,}", t("Committed outcomes with a reason code.")),
+    (t("AI briefs"), f"{len(invocations):,}", t("Advisory only.")),
+    (t("Decisions by an AI actor"), str(ai_decisions),
+     t("This must be zero. `audit.log.record_decision` refuses any AI actor.")),
+    (t("Distinct actors"), f"{entries['actor_id'].nunique() if not entries.empty else 0}",
+     t("People, the policy engine and the pipeline.")),
 ])
 
 if ai_decisions:
-    st.error("An AI actor appears on a committed decision. That is a contract violation.")
+    st.error(t("An AI actor appears on a committed decision. That is a contract violation."))
 else:
-    st.success(
+    st.success(t(
         "No AI actor appears on any committed decision — enforced in code, not by convention."
-    )
+    ))
 
 st.divider()
 
 left, right = st.columns([3, 2])
 
 with left:
-    st.subheader("Where the copilot and the human disagreed")
+    st.subheader(t("Where the copilot and the human disagreed"))
     if decisions.empty:
         st.caption("No decisions yet.")
     else:
@@ -93,7 +94,7 @@ with left:
             )
 
 with right:
-    st.subheader("Guardrail outcomes")
+    st.subheader(t("Guardrail outcomes"))
     guardrails = frames["marts.kpi_ai_guardrails"]
     if guardrails.empty:
         st.caption("No AI invocations recorded.")
@@ -114,13 +115,13 @@ with right:
 
 st.divider()
 
-st.subheader("The log")
+st.subheader(t("The log"))
 with st.container(border=True):
     columns = st.columns([1, 1, 1, 2])
-    role = columns[0].multiselect("Actor role", sorted(entries["actor_role"].unique()))
-    action = columns[1].multiselect("Action", sorted(entries["action"].unique()))
-    object_type = columns[2].multiselect("Object", sorted(entries["object_type"].unique()))
-    search = columns[3].text_input("Search summary or object id", placeholder="CASE_ or TXN_")
+    role = columns[0].multiselect(t("Actor role"), sorted(entries["actor_role"].unique()))
+    action = columns[1].multiselect(t("Action"), sorted(entries["action"].unique()))
+    object_type = columns[2].multiselect(t("Object"), sorted(entries["object_type"].unique()))
+    search = columns[3].text_input(t("Search summary or object id"), placeholder="CASE_ or TXN_")
 
 view = entries.copy()
 if role:
@@ -152,19 +153,19 @@ st.dataframe(
 )
 
 st.download_button(
-    "Export the filtered log as CSV",
+    t("Export the filtered log as CSV"),
     view.to_csv(index=False).encode("utf-8"),
     file_name="audit_log.csv",
     mime="text/csv",
 )
 
 st.divider()
-st.subheader("Refresh history")
+st.subheader(t("Refresh history"))
 st.dataframe(
     frames["audit.refresh_log"].sort_values("started_at", ascending=False),
     use_container_width=True, hide_index=True,
 )
-st.caption(
+st.caption(t(
     "Every build records its seed and the taxonomy, rules and model versions that produced it. "
     "A metric without its versions is not reproducible."
-)
+))

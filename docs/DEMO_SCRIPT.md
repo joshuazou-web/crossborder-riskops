@@ -149,6 +149,17 @@ Browser at <http://localhost:8501>, window at 1440×900 or wider.
 
 ---
 
+## If the audience reads Chinese
+
+Open with `?lang=zh`, or click 中文 at the top-right of any page. Worth saying out loud while you
+do it, because it is a product decision rather than a feature:
+
+> "The interface switches, and so do the explanations — those are the argument, not decoration.
+> What does *not* switch is identifiers, money, and anything the pipeline or the model generated.
+> Machine-translating a signal's detail would put a translation error inside the evidence."
+
+---
+
 ## Backup material
 
 If the recording runs long, cut §1:05–1:30 (the duplicate) first — §1:30–2:10 carries the argument.

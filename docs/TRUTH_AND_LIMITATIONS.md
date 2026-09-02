@@ -148,7 +148,11 @@ Stated here rather than discovered by a reviewer:
    honest and measurable, and it means the breadth of what it can answer is a property of a
    keyword table, not of a language model. A real provider on the same packets would answer more
    and would need the same guardrails, which are provider-independent.
-10. **The simulated conversations are simulated.** `riskops demo` seeds 93 follow-up turns across
+10. **The Chinese interface is a hand-written table, and only covers the interface.** Rule
+   details, AI briefs and audit entries render in English in both languages, because they are
+   generated rather than authored and translating evidence would put a translation error inside
+   it. The sidebar states this on screen.
+11. **The simulated conversations are simulated.** `riskops demo` seeds 93 follow-up turns across
    30 cases from a fixed question list. No analyst asked any of them. They exist so the demo shows
    the refusal and the decline rather than only the happy path.
 

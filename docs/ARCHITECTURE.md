@@ -104,6 +104,27 @@ runs the demo with no server, while the analytics stay real SQL rather than pand
 | `audit/log.py` | Append-only writes and the authority check | `record_decision` refuses `ai_copilot` before anything is written |
 | `audit/chain.py` | Hash chaining and verification | Returns three states (`verified`/`broken`/`unverifiable`), because "predates chaining" and "was tampered with" are opposite findings |
 | `eval/runner.py` | Every quoted number | Nothing is typed by hand into a README |
+| `app/_i18n.py` | English and Chinese | The English source text *is* the key, so a missing translation degrades to correct English rather than to a placeholder, and the page code stays readable on its own |
+
+---
+
+## What the Chinese interface does and does not translate
+
+The interface translates. Three things deliberately do not:
+
+- **Identifiers** — `CASE_0001121`, `R303_IMPOSSIBLE_TRAVEL`, `txn.captured_minor`. A screenshot in
+  one language has to be matchable to a log line in the other.
+- **Money and currency codes.** `2,488.83 PHP` is the same string in both, because it is a value,
+  not prose.
+- **Generated content** — rule details, AI briefs, audit summaries. These come from the pipeline and
+  the model rather than the interface, and machine-translating a signal's `detail` string would put
+  a translation error *inside the evidence*. The sidebar says so rather than leaving a reader to
+  wonder why half the case detail is still English.
+
+`tests/test_i18n.py` parses each page's AST, collects every literal passed to `t()`, and fails if a
+wrapped string has no translation or if a translation exists that no page uses any more. That second
+check is the one that matters over time: it catches the case where a caption is reworded and the
+Chinese quietly stops appearing.
 
 ---
 

@@ -37,6 +37,9 @@ PAGES: list[tuple[str, str, int]] = [
     # A case that carries a seeded conversation including a refused request to
     # hand over the decision - the behaviour the screenshot exists to show.
     ("08-followup.png", "/Case_Detail?case=CASE_0000862", 12),
+    # The same screen in Chinese. The interface translates; identifiers, money
+    # and generated evidence deliberately do not.
+    ("09-chinese.png", "/?lang=zh", 8),
 ]
 
 

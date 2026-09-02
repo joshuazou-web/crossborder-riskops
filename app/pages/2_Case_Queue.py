@@ -8,31 +8,33 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import plotly.express as px  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner  # noqa: E402
 
 frames = page_setup("Case Queue", "📋")
 cases = frames["marts.fct_cases"]
 
-st.title("Case Queue")
-st.caption(
+st.title(t("Case Queue"))
+st.caption(t(
     "Every case the deterministic policy could not close on its own, with the reason it exists "
     "and the clock it is running against."
-)
+))
 synthetic_banner()
 
 open_cases = cases[cases["is_open"]]
 kpi_row([
-    ("Open cases", f"{len(open_cases):,}", "Not yet resolved."),
-    ("Critical + high", f"{int(open_cases['risk_band'].isin(['critical', 'high']).sum()):,}",
-     "The part of the queue that cannot wait."),
-    ("Past SLA", f"{int(open_cases['sla_breached'].sum()):,}",
-     "SLA is set by risk band: 2h critical, 8h high, 24h medium, 72h low."),
-    ("Awaiting information", f"{int((open_cases['case_state'] == 'awaiting_information').sum()):,}",
-     "Blocked on a person, not on an analyst."),
-    ("Appealed", f"{int(cases['appeal_count'].sum()):,}",
-     "Payers and merchants contesting a resolved case."),
-    ("Overturned holds", f"{int(cases['is_false_positive'].sum()):,}",
-     "Holds an appeal proved wrong. This number existing at all is the point."),
+    (t("Open cases"), f"{len(open_cases):,}", t("Not yet resolved.")),
+    (t("Critical + high"), f"{int(open_cases['risk_band'].isin(['critical', 'high']).sum()):,}",
+     t("The part of the queue that cannot wait.")),
+    (t("Past SLA"), f"{int(open_cases['sla_breached'].sum()):,}",
+     t("SLA is set by risk band: 2h critical, 8h high, 24h medium, 72h low.")),
+    (t("Awaiting information"),
+     f"{int((open_cases['case_state'] == 'awaiting_information').sum()):,}",
+     t("Blocked on a person, not on an analyst.")),
+    (t("Appealed"), f"{int(cases['appeal_count'].sum()):,}",
+     t("Payers and merchants contesting a resolved case.")),
+    (t("Overturned holds"), f"{int(cases['is_false_positive'].sum()):,}",
+     t("Holds an appeal proved wrong. This number existing at all is the point.")),
 ])
 
 st.divider()
@@ -40,7 +42,7 @@ st.divider()
 left, right = st.columns([2, 3])
 
 with left:
-    st.subheader("Queue shape")
+    st.subheader(t("Queue shape"))
     shape = (
         cases.groupby(["risk_band", "case_state"], as_index=False)
         .size().rename(columns={"size": "cases"})
@@ -50,7 +52,7 @@ with left:
     st.plotly_chart(neutral_chart_layout(figure, 300), use_container_width=True)
 
 with right:
-    st.subheader("SLA by risk band")
+    st.subheader(t("SLA by risk band"))
     sla = frames["marts.kpi_sla"]
     st.dataframe(
         sla, use_container_width=True, hide_index=True,
@@ -64,22 +66,26 @@ with right:
             "p90_handling_minutes": st.column_config.NumberColumn("P90 (min)", format="%.0f"),
         },
     )
-    st.caption(
+    st.caption(t(
         "Handling times come from **simulated** analyst behaviour with a fixed error rate, not "
         "from observed human work."
-    )
+    ))
 
 st.divider()
 
 # --- filters ---------------------------------------------------------------
 with st.container(border=True):
     columns = st.columns([1, 1, 1, 1, 1])
-    band = columns[0].multiselect("Risk band", ["critical", "high", "medium", "low"])
-    state = columns[1].multiselect("Case state", sorted(cases["case_state"].unique()))
-    family = columns[2].multiselect("Reason family",
+    band = columns[0].multiselect(t("Risk band"), ["critical", "high", "medium", "low"])
+    state = columns[1].multiselect(t("Case state"), sorted(cases["case_state"].unique()))
+    family = columns[2].multiselect(t("Reason family"),
                                     sorted(cases["primary_reason_family"].unique()))
-    owner = columns[3].multiselect("Owning role", sorted(cases["assigned_role"].unique()))
-    scope = columns[4].selectbox("Scope", ["Open only", "All cases", "Breached SLA", "Appealed"])
+    owner = columns[3].multiselect(t("Owning role"), sorted(cases["assigned_role"].unique()))
+    scope = columns[4].selectbox(
+        t("Scope"),
+        ["Open only", "All cases", "Breached SLA", "Appealed"],
+        format_func=t,
+    )
 
 view = cases.copy()
 if scope == "Open only":
@@ -129,10 +135,10 @@ selection = st.dataframe(
     },
 )
 
-st.caption(
+st.caption(t(
     "`AI suggests` is advisory and carries no authority. The column exists next to `Decided` on "
     "purpose: the gap between them is a number this product reports rather than hides."
-)
+))
 
 rows = selection.get("selection", {}).get("rows", []) if selection else []
 if rows:
@@ -145,16 +151,16 @@ if rows:
 st.divider()
 left, right = st.columns(2)
 with left:
-    st.subheader("Outcomes and reason codes")
+    st.subheader(t("Outcomes and reason codes"))
     st.dataframe(frames["marts.kpi_case_outcomes"], use_container_width=True, hide_index=True)
 with right:
-    st.subheader("Appeals")
+    st.subheader(t("Appeals"))
     appeals = frames["marts.kpi_appeals"]
     if appeals.empty:
-        st.caption("No appeals in this dataset.")
+        st.caption(t("No appeals in this dataset."))
     else:
         st.dataframe(appeals, use_container_width=True, hide_index=True)
-    st.caption(
+    st.caption(t(
         "An accepted appeal closes the case as `closed_false_positive` - the only state that "
         "counts toward recovery. A wrong hold that nobody records is a wrong hold nobody fixes."
-    )
+    ))

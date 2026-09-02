@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import money, page_setup, pill, synthetic_banner  # noqa: E402
 
 frames = page_setup("Transaction Explorer", "🔎")
@@ -16,31 +17,33 @@ signals = frames["risk.signals"]
 events = frames["core.payment_events"]
 breaks = frames["core.reconciliation_breaks"]
 
-st.title("Transaction Explorer")
-st.caption("Every payment, its lifecycle, its money and the signals it produced.")
+st.title(t("Transaction Explorer"))
+st.caption(t("Every payment, its lifecycle, its money and the signals it produced."))
 synthetic_banner()
 
 # --- filters ---------------------------------------------------------------
 with st.container(border=True):
     row1 = st.columns([2, 1, 1, 1])
     search = row1[0].text_input(
-        "Search", placeholder="transaction, wallet, merchant or idempotency key",
+        t("Search"), placeholder=t("transaction, wallet, merchant or idempotency key"),
         label_visibility="collapsed",
     )
-    state = row1[1].multiselect("Payment state", sorted(transactions["payment_state"].unique()))
-    action = row1[2].multiselect("Policy action", sorted(transactions["policy_action"].unique()))
-    band = row1[3].multiselect("Risk band", ["critical", "high", "medium", "low"])
+    state = row1[1].multiselect(t("Payment state"),
+                                sorted(transactions["payment_state"].unique()))
+    action = row1[2].multiselect(t("Policy action"),
+                                 sorted(transactions["policy_action"].unique()))
+    band = row1[3].multiselect(t("Risk band"), ["critical", "high", "medium", "low"])
 
     row2 = st.columns([1, 1, 1, 1])
     currency = row2[0].multiselect(
-        "Presentment currency", sorted(transactions["presentment_currency"].unique())
+        t("Presentment currency"), sorted(transactions["presentment_currency"].unique())
     )
     corridor = row2[1].multiselect(
-        "Corridor", sorted(transactions["corridor"].dropna().unique())
+        t("Corridor"), sorted(transactions["corridor"].dropna().unique())
     )
-    severity = row2[2].multiselect("Highest severity",
+    severity = row2[2].multiselect(t("Highest severity"),
                                    ["critical", "high", "medium", "low", "none"])
-    only_breaks = row2[3].checkbox("Only with reconciliation breaks")
+    only_breaks = row2[3].checkbox(t("Only with reconciliation breaks"))
 
 view = transactions.copy()
 if search:
@@ -100,7 +103,7 @@ selection = st.dataframe(
 
 rows = selection.get("selection", {}).get("rows", []) if selection else []
 if not rows:
-    st.info("Select a row to open the full transaction record.")
+    st.info(t("Select a row to open the full transaction record."))
     st.stop()
 
 record = display.iloc[rows[0]]
@@ -120,7 +123,7 @@ full = detail[detail["transaction_id"] == txn_id].iloc[0]
 
 left, middle, right = st.columns(3)
 with left:
-    st.markdown("**Money**")
+    st.markdown(f"**{t('Money')}**")
     st.write(pd.DataFrame([
         {"Field": "Authorised", "Value": money(full["authorized_minor"], full["presentment_currency"])},
         {"Field": "Captured", "Value": money(full["captured_minor"], full["presentment_currency"])},
@@ -130,7 +133,7 @@ with left:
         {"Field": "Settled", "Value": money(full["settled_minor"], full["settlement_currency"])},
     ]).astype({"Value": "string"}).set_index("Field"))
 with middle:
-    st.markdown("**FX**")
+    st.markdown(f"**{t('FX')}**")
     st.write(pd.DataFrame([
         {"Field": "Presentment", "Value": full["presentment_currency"]},
         {"Field": "Settlement", "Value": full["settlement_currency"]},
@@ -140,7 +143,7 @@ with middle:
         {"Field": "Quoted at", "Value": str(full["fx_quoted_at"])[:19]},
     ]).astype({"Value": "string"}).set_index("Field"))
 with right:
-    st.markdown("**Context**")
+    st.markdown(f"**{t('Context')}**")
     st.write(pd.DataFrame([
         {"Field": "Wallet", "Value": full["wallet_id"]},
         {"Field": "Wallet country", "Value": full["wallet_country"]},
@@ -151,7 +154,7 @@ with right:
         {"Field": "Idempotency key", "Value": full["idempotency_key"]},
     ]).astype({"Value": "string"}).set_index("Field"))
 
-st.markdown("**Lifecycle**")
+st.markdown(f"**{t('Lifecycle')}**")
 timeline = events[events["transaction_id"] == txn_id].sort_values("occurred_at")
 timeline_view = timeline[[
     "occurred_at", "event_type", "from_state", "to_state", "amount_minor", "currency",
@@ -168,17 +171,17 @@ st.dataframe(
     },
 )
 if not timeline[~timeline["accepted"].astype(bool)].empty:
-    st.warning(
+    st.warning(t(
         "This transaction received events the state machine refused. They were quarantined and "
         "never reached the ledger - the money below is still correct."
-    )
+    ))
 
 left, right = st.columns(2)
 with left:
-    st.markdown("**Risk signals**")
+    st.markdown(f"**{t('Risk signals (detail)')}**")
     txn_signals = signals[signals["transaction_id"] == txn_id]
     if txn_signals.empty:
-        st.caption("No rule fired on this transaction.")
+        st.caption(t("No rule fired on this transaction."))
     else:
         for record_signal in txn_signals.sort_values("weight", ascending=False).to_dict("records"):
             st.markdown(
@@ -194,10 +197,10 @@ with left:
             )
 
 with right:
-    st.markdown("**Reconciliation**")
+    st.markdown(f"**{t('Reconciliation')}**")
     txn_breaks = breaks[breaks["transaction_id"] == txn_id]
     if txn_breaks.empty:
-        st.caption("The money reconciles.")
+        st.caption(t("The money reconciles."))
     else:
         for record_break in txn_breaks.to_dict("records"):
             st.markdown(f"**{record_break['break_type']}** ({record_break['difference_bps']} bps)")
@@ -209,12 +212,12 @@ with right:
 
     note = str(full["merchant_note"] or "")
     if note:
-        st.markdown("**Merchant free text** (untrusted)")
+        st.markdown(f"**{t('Merchant free text')}**")
         st.code(note, language=None)
-        st.caption(
+        st.caption(t(
             "Merchant-supplied text is attacker-controlled. It is screened before any model "
             "reads it; see the Case Detail page for what the copilot was actually shown."
-        )
+        ))
 
 if str(record.get("case_id") or ""):
     st.info(

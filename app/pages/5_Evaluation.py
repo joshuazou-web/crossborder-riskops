@@ -10,12 +10,13 @@ import pandas as pd  # noqa: E402
 import plotly.express as px  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner  # noqa: E402
 from riskops.config import get_settings  # noqa: E402
 
 frames = page_setup("Evaluation", "📐")
 
-st.title("Evaluation and AI boundaries")
+st.title(t("Evaluation and AI boundaries"))
 synthetic_banner()
 
 report_path = get_settings().reports_dir / "evaluation.json"
@@ -39,27 +40,28 @@ st.caption(
     f"rules `{results['versions']['rules']}` · policy `{results['versions']['policy']}`"
 )
 
-with st.expander("Read this before reading any number", expanded=True):
+with st.expander(t("Read this before reading any number"), expanded=True):
     for caveat in results["caveats"]:
         st.markdown(f"- {caveat}")
 
-tab_detection, tab_ai, tab_safety, tab_money, tab_ops = st.tabs(
-    ["Risk detection", "AI brief quality", "Agent safety", "Money and lifecycle", "Operations"]
-)
+tab_detection, tab_ai, tab_safety, tab_money, tab_ops = st.tabs([
+    t("Risk detection"), t("AI brief quality"), t("Agent safety"),
+    t("Money and lifecycle"), t("Operations"),
+])
 
 with tab_detection:
     kpi_row([
-        ("Recall", f"{detection['recall_pct']}%",
-         "Of the transactions the generator labelled actionable, the share the policy routed "
-         "anywhere other than auto-release."),
-        ("Precision", f"{detection['precision_pct']}%",
-         "Of the transactions routed to a person, the share that really were actionable."),
-        ("False-positive rate", f"{detection['false_positive_rate_pct']}%",
-         "Benign transactions routed to a person. This is the cost of the recall above."),
-        ("Manual review rate", f"{detection['manual_review_rate_pct']}%",
-         "The share of all traffic a person has to look at."),
-        ("Auto-release leakage", f"{detection['auto_release_leakage_pct']}%",
-         "Actionable transactions that were auto-released - the misses that matter most."),
+        (t("Recall"), f"{detection['recall_pct']}%",
+         t("Of the transactions the generator labelled actionable, the share the policy routed "
+           "anywhere other than auto-release.")),
+        (t("Precision"), f"{detection['precision_pct']}%",
+         t("Of the transactions routed to a person, the share that really were actionable.")),
+        (t("False-positive rate"), f"{detection['false_positive_rate_pct']}%",
+         t("Benign transactions routed to a person. This is the cost of the recall above.")),
+        (t("Manual review rate"), f"{detection['manual_review_rate_pct']}%",
+         t("The share of all traffic a person has to look at.")),
+        (t("Auto-release leakage"), f"{detection['auto_release_leakage_pct']}%",
+         t("Actionable transactions that were auto-released - the misses that matter most.")),
     ])
     confusion = detection["confusion"]
     st.caption(
@@ -69,7 +71,7 @@ with tab_detection:
         "actionable, against a small fraction of a percent in a real corridor."
     )
 
-    st.subheader("Per scenario")
+    st.subheader(t("Per scenario"))
     scenarios = pd.DataFrame(detection["per_scenario"])
     figure = px.bar(
         scenarios.sort_values("routed_pct"), x="routed_pct", y="scenario",
@@ -78,14 +80,14 @@ with tab_detection:
         labels={"routed_pct": "routed to review %", "is_actionable": "should be caught"},
     )
     st.plotly_chart(neutral_chart_layout(figure, 520), use_container_width=True)
-    st.caption(
+    st.caption(t(
         "Red bars should be near 100%; green bars are the false-positive cost. "
         "`impossible_travel` sits below the rest for a reason worth knowing: the *first* payment "
         "of an impossible hop carries no evidence until the second one arrives, so per-episode "
         "detection is higher than the per-transaction figure shown here."
-    )
+    ))
 
-    st.subheader("Per rule")
+    st.subheader(t("Per rule"))
     st.dataframe(pd.DataFrame(detection["per_rule"]), use_container_width=True, hide_index=True,
                  column_config={
                      "precision_pct": st.column_config.ProgressColumn(
@@ -201,11 +203,11 @@ with tab_ops:
                 f"{operations['audit_chain_summary']}")
 
 st.divider()
-st.subheader("Where the boundary sits")
+st.subheader(t("Where the boundary sits"))
 st.dataframe(
     pd.DataFrame([
-        {"Task": "Detect a rule violation", "Owner": "Deterministic rules",
-         "Why": "Must be reproducible and auditable"},
+        {t("Task"): "Detect a rule violation", t("Owner"): "Deterministic rules",
+         t("Why"): "Must be reproducible and auditable"},
         {"Task": "Score residual risk", "Owner": "Interpretable model",
          "Why": "Calibrated, explainable, testable"},
         {"Task": "Band the case", "Owner": "Decision policy",

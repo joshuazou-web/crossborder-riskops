@@ -21,6 +21,7 @@ import pandas as pd  # noqa: E402
 import plotly.graph_objects as go  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import kpi_row, neutral_chart_layout, page_setup, synthetic_banner  # noqa: E402
 from riskops.config import get_settings  # noqa: E402
 from riskops.eval.robustness import policy_mix, sweep_thresholds  # noqa: E402
@@ -32,16 +33,16 @@ transactions = frames["core.transactions"]
 signals = frames["risk.signals"]
 scores = frames["risk.model_scores"]
 
-st.title("Policy Tuning")
+st.title(t("Policy Tuning"))
 st.caption(
-    "Where the two automatic thresholds sit, and what each setting costs. "
-    "Recomputed live over all "
-    f"{len(transactions):,} transactions using the same decision policy the pipeline runs."
+    t("Where the two automatic thresholds sit, and what each setting costs.")
+    + f" ({len(transactions):,} transactions)"
 )
 synthetic_banner()
 
 st.info(
-    "**This is the only screen where a product decision is made rather than a case decision.** "
+    "**" + t("This is the only screen where a product decision is made rather than a case "
+             "decision.") + "** "
     "Moving these thresholds does not touch the warehouse — it shows you what *would* have "
     "happened. Committing a change means setting `RISKOPS_AUTO_RELEASE_BELOW` / "
     "`RISKOPS_AUTO_HOLD_AT` and rebuilding, so the change is versioned and appears in the "
@@ -53,21 +54,21 @@ st.info(
 with st.container(border=True):
     left, right = st.columns(2)
     release_below = left.slider(
-        "Auto-release below", min_value=0.05, max_value=0.75,
+        t("Auto-release below"), min_value=0.05, max_value=0.75,
         value=float(settings.auto_release_below), step=0.01,
         help="Under this combined score, and with nothing above low severity, the payment is "
              "released without a human. Raising it frees analyst time and lets more actionable "
              "traffic through unlooked-at.",
     )
     hold_at = right.slider(
-        "Auto-hold at or above", min_value=0.50, max_value=1.00,
+        t("Auto-hold at or above"), min_value=0.50, max_value=1.00,
         value=float(settings.auto_hold_at_or_above), step=0.01,
         help="At or above this, the machine stops the payment before anyone reads the case. "
              "The case still opens and a person still confirms the outcome — but the payer's "
              "money is already stopped, so a wrong setting here has a real cost to real people.",
     )
-    left.caption(f"shipped default: `{settings.auto_release_below}`")
-    right.caption(f"shipped default: `{settings.auto_hold_at_or_above}`")
+    left.caption(f"{t('shipped default:')} `{settings.auto_release_below}`")
+    right.caption(f"{t('shipped default:')} `{settings.auto_hold_at_or_above}`")
 
 current = policy_mix(settings, transactions, signals, scores,
                      release_below, hold_at)
@@ -83,21 +84,21 @@ def delta(key: str, invert: bool = False) -> str | None:
     return f"{change:+}" if not invert else f"{change:+}"
 
 
-st.subheader("What this setting produces")
+st.subheader(t("What this setting produces"))
 kpi_row([
-    ("Recall", f"{current['recall_pct']}%",
-     "Actionable transactions the policy routed to a person or held."),
-    ("Precision", f"{current['precision_pct']}%",
-     "Of everything routed, how much really was actionable."),
-    ("Review rate", f"{current['manual_review_rate_pct']}%",
-     "The share of all traffic a person has to look at. This is the analyst-time bill."),
-    ("Leakage", f"{current['auto_release_leakage_pct']}%",
-     "Actionable traffic released with nobody looking. These are the misses that matter."),
-    ("Auto-holds", f"{current['auto_holds']:,}",
-     "Payments stopped by the machine before a human read the case."),
-    ("Wrong auto-holds", f"{current['wrong_auto_holds']:,}",
-     "Benign payments stopped by the machine. This is the number that decides whether a "
-     "threshold is shippable."),
+    (t("Recall"), f"{current['recall_pct']}%",
+     t("Actionable transactions the policy routed to a person or held.")),
+    (t("Precision"), f"{current['precision_pct']}%",
+     t("Of everything routed, how much really was actionable.")),
+    (t("Review rate"), f"{current['manual_review_rate_pct']}%",
+     t("The share of all traffic a person has to look at. This is the analyst-time bill.")),
+    (t("Leakage"), f"{current['auto_release_leakage_pct']}%",
+     t("Actionable traffic released with nobody looking. These are the misses that matter.")),
+    (t("Auto-holds"), f"{current['auto_holds']:,}",
+     t("Payments stopped by the machine before a human read the case.")),
+    (t("Wrong auto-holds"), f"{current['wrong_auto_holds']:,}",
+     t("Benign payments stopped by the machine. This is the number that decides whether a "
+       "threshold is shippable.")),
 ])
 
 if release_below != settings.auto_release_below or hold_at != settings.auto_hold_at_or_above:
@@ -112,20 +113,20 @@ if release_below != settings.auto_release_below or hold_at != settings.auto_hold
     if wrong_holds_delta:
         changes.append(f"wrong auto-holds {wrong_holds_delta:+}")
     st.warning(
-        "Against the shipped setting: " + ", ".join(changes) if changes
-        else "Identical outcome to the shipped setting.",
+        t("Against the shipped setting:") + " " + ", ".join(changes) if changes
+        else t("Identical outcome to the shipped setting."),
         icon="⚖️",
     )
 
 st.divider()
 
 # --- the trade-off curve ----------------------------------------------------
-st.subheader("The trade-off")
-st.caption(
+st.subheader(t("The trade-off"))
+st.caption(t(
     "Every point is a real run of the decision policy at that auto-release threshold. "
     "The choice is not 'which is best' — it is how much analyst time this team has, and how "
     "much unlooked-at leakage the business will accept."
-)
+))
 
 @st.cache_data(ttl=300, show_spinner="Computing the trade-off curve...")
 def _curve(_transactions, _signals, _scores, grid: tuple[float, ...], cache_key: str):
@@ -172,18 +173,18 @@ figure.update_layout(xaxis_title="Review rate (% of all traffic a person looks a
                      yaxis_title="Recall (% of actionable traffic caught)")
 st.plotly_chart(neutral_chart_layout(figure, 420), use_container_width=True)
 
-st.caption(
+st.caption(t(
     "The knee of this curve is the argument to have with an operations lead: past it, each "
     "additional point of recall costs several points of analyst time. Below it, you are leaving "
     "cheap detection on the table."
-)
+))
 
 st.divider()
 
 left, right = st.columns([3, 2])
 
 with left:
-    st.subheader("Where the traffic goes")
+    st.subheader(t("Where the traffic goes"))
     mix = pd.DataFrame(
         [{"action": action, "transactions": count}
          for action, count in sorted(current["action_counts"].items(),
@@ -201,20 +202,20 @@ with left:
     )
 
 with right:
-    st.subheader("The number to watch")
-    st.metric("Wrong auto-holds", f"{current['wrong_auto_holds']:,}",
+    st.subheader(t("The number to watch"))
+    st.metric(t("Wrong auto-holds"), f"{current['wrong_auto_holds']:,}",
               delta=f"{int(current['wrong_auto_holds']) - int(shipped['wrong_auto_holds']):+}"
               if current["wrong_auto_holds"] != shipped["wrong_auto_holds"] else None,
               delta_color="inverse")
-    st.caption(
+    st.caption(t(
         "Benign payments the machine stopped before any person read the case. Recall and "
         "precision are aggregate statistics; this one is a count of people who could not pay "
         "for something. It is recoverable through the appeal flow, which is why the product has "
         "one — but a threshold that grows this number needs an argument, not a slider."
-    )
+    ))
 
 st.divider()
-st.subheader("Full curve")
+st.subheader(t("Full curve"))
 st.dataframe(
     curve[["auto_release_below", "recall_pct", "precision_pct", "false_positive_rate_pct",
            "manual_review_rate_pct", "auto_release_leakage_pct", "tp", "fp", "fn"]],

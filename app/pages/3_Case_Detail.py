@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from _i18n import t  # noqa: E402
 from _shared import money, page_setup, pill, synthetic_banner, write_session  # noqa: E402
 from riskops.ai.conversation import (  # noqa: E402
     ask,
@@ -46,10 +47,10 @@ decisions = frames["audit.decisions"]
 appeals = frames["audit.appeals"]
 events = frames["core.payment_events"]
 
-st.title("Case Detail")
-synthetic_banner(
+st.title(t("Case Detail"))
+synthetic_banner(t(
     "Decisions taken on this screen are written to the local warehouse and are part of the demo."
-)
+))
 
 case_ids = list(cases.sort_values(["is_open", "risk_score"], ascending=[False, False])["case_id"])
 if not case_ids:
@@ -61,7 +62,7 @@ if not case_ids:
 from_url = st.query_params.get("case")
 preselected = from_url or st.session_state.get("selected_case_id")
 index = case_ids.index(preselected) if preselected in case_ids else 0
-case_id = st.selectbox("Case", case_ids, index=index)
+case_id = st.selectbox(t("Case"), case_ids, index=index)
 st.session_state["selected_case_id"] = case_id
 if from_url and from_url != case_id:
     st.query_params.clear()
@@ -80,13 +81,13 @@ st.markdown(
     unsafe_allow_html=True,
 )
 header = st.columns(5)
-header[0].metric("Risk score", f"{case['risk_score']:.2f}")
-header[1].metric("Signals", int(case["signal_count"]))
-header[2].metric("Amount", money(full["captured_minor"], full["presentment_currency"]))
-header[3].metric("Corridor", str(case["corridor"]))
-header[4].metric("SLA due", pd.Timestamp(case["sla_due_at"]).strftime("%Y-%m-%d %H:%M"))
+header[0].metric(t("Risk score"), f"{case['risk_score']:.2f}")
+header[1].metric(t("Signals"), int(case["signal_count"]))
+header[2].metric(t("Amount"), money(full["captured_minor"], full["presentment_currency"]))
+header[3].metric(t("Corridor"), str(case["corridor"]))
+header[4].metric(t("SLA due"), pd.Timestamp(case["sla_due_at"]).strftime("%Y-%m-%d %H:%M"))
 
-st.caption(f"**Why this case exists:** {case['policy_rationale']}")
+st.caption(f"{t('**Why this case exists:**')} {case['policy_rationale']}")
 
 st.divider()
 
@@ -94,9 +95,9 @@ evidence_column, ai_column = st.columns([3, 2], gap="large")
 
 # --- evidence --------------------------------------------------------------
 with evidence_column:
-    st.subheader("Evidence")
+    st.subheader(t("Evidence"))
 
-    st.markdown("**Payment timeline**")
+    st.markdown(f"**{t('Payment timeline')}**")
     timeline = events[events["transaction_id"] == txn_id].sort_values("occurred_at")
     st.dataframe(
         timeline[["occurred_at", "event_type", "from_state", "to_state", "amount_minor",
@@ -110,7 +111,7 @@ with evidence_column:
         },
     )
 
-    st.markdown("**Signals**")
+    st.markdown(f"**{t('Signals')}**")
     case_signals = signals[signals["transaction_id"] == txn_id].sort_values(
         "weight", ascending=False
     )
@@ -128,7 +129,7 @@ with evidence_column:
 
     case_breaks = breaks[breaks["transaction_id"] == txn_id]
     if not case_breaks.empty:
-        st.markdown("**Reconciliation breaks**")
+        st.markdown(f"**{t('Reconciliation breaks (detail)')}**")
         for record in case_breaks.to_dict("records"):
             with st.container(border=True):
                 st.markdown(f"**{record['break_type']}** · {record['difference_bps']} bps")
@@ -142,7 +143,7 @@ with evidence_column:
     scores = frames["risk.model_scores"]
     score_row = scores[scores["transaction_id"] == txn_id]
     if not score_row.empty:
-        st.markdown("**Residual-risk model**")
+        st.markdown(f"**{t('Residual-risk model')}**")
         row = score_row.iloc[0]
         st.write(
             f"Score **{row['score']:.2f}** (band {row['band']}), model version "
@@ -160,18 +161,24 @@ with evidence_column:
 
     note = str(full["merchant_note"] or "")
     if note:
-        st.markdown("**Merchant free text** — untrusted, attacker-controlled")
+        st.markdown(f"**{t('Merchant free text — untrusted, attacker-controlled')}**")
         st.code(note, language=None)
 
 # --- AI brief --------------------------------------------------------------
 with ai_column:
-    st.subheader("AI investigation brief")
+    st.subheader(t("AI investigation brief"))
+    # Hoisted out of the f-string: Python 3.10 does not allow a backslash inside
+    # an f-string expression, and the project targets 3.10.
+    advisory_heading = t("Advisory only")
+    advisory_body = t(
+        "This brief organises evidence, explains signals, names what is missing and "
+        "<em>suggests</em> an action. It has no authority to release, hold, refund or close "
+        "anything, and the audit log refuses to record an AI actor on a decision."
+    )
     st.markdown(
-        """<div class="advisory-box">
-        <h4>Advisory only</h4>
-        This brief organises evidence, explains signals, names what is missing and
-        <em>suggests</em> an action. It has no authority to release, hold, refund or close
-        anything, and the audit log refuses to record an AI actor on a decision.
+        f"""<div class="advisory-box">
+        <h4>{advisory_heading}</h4>
+        {advisory_body}
         </div>""",
         unsafe_allow_html=True,
     )
@@ -181,7 +188,8 @@ with ai_column:
     if not stored.empty:
         brief = CaseBrief.from_dict(json.loads(stored.iloc[-1]["brief_json"]))
 
-    if st.button("Regenerate brief", help="Re-runs the copilot against the current case packet."):
+    if st.button(t("Regenerate brief"),
+                 help="Re-runs the copilot against the current case packet."):
         settings = get_settings()
         merchants = frames["core.merchants"]
         wallets = frames["core.wallets"]
@@ -207,22 +215,22 @@ with ai_column:
         st.cache_data.clear()
 
     if brief is None:
-        st.info("No brief has been generated for this case yet.")
+        st.info(t("No brief has been generated for this case yet."))
     else:
         if brief.abstained:
-            st.warning(f"**The copilot abstained.** {brief.rationale}")
+            st.warning(f"**{t('**The copilot abstained.**').strip('*')}** {brief.rationale}")
         else:
             st.markdown(
-                f"**Suggested action:** `{brief.recommended_action}` · confidence "
-                f"{brief.confidence:.2f}"
+                f"**{t('Suggested action:')}** `{brief.recommended_action}` · "
+                f"{t('confidence')} {brief.confidence:.2f}"
             )
             st.caption(brief.rationale)
 
-        st.markdown("**Summary**")
+        st.markdown(f"**{t('Summary')}**")
         st.write(brief.summary)
 
         if brief.key_facts:
-            st.markdown("**Key facts**")
+            st.markdown(f"**{t('Key facts')}**")
             for finding in brief.key_facts:
                 st.markdown(f"- {finding.statement}")
                 st.markdown(
@@ -231,7 +239,7 @@ with ai_column:
                 )
 
         if brief.signal_explanations:
-            st.markdown("**What the signals mean**")
+            st.markdown(f"**{t('What the signals mean')}**")
             for finding in brief.signal_explanations:
                 st.markdown(f"- {finding.statement}")
                 st.markdown(
@@ -240,21 +248,21 @@ with ai_column:
                 )
 
         if brief.conflicts:
-            st.markdown("**Conflicts in the evidence**")
+            st.markdown(f"**{t('Conflicts in the evidence')}**")
             for finding in brief.conflicts:
                 st.markdown(f"- {finding.statement}")
 
         if brief.missing_information:
-            st.markdown("**Missing information**")
+            st.markdown(f"**{t('Missing information')}**")
             for item in brief.missing_information:
                 st.markdown(f"- {item}")
 
         if brief.suggested_questions:
-            st.markdown("**Questions to ask**")
+            st.markdown(f"**{t('Questions to ask')}**")
             for item in brief.suggested_questions:
                 st.markdown(f"- {item}")
 
-        with st.expander("Guardrails and provenance"):
+        with st.expander(t("Guardrails and provenance")):
             guard = brief.guardrail
             st.write(
                 pd.DataFrame([
@@ -285,14 +293,14 @@ with ai_column:
 st.divider()
 
 # --- follow-up conversation -------------------------------------------------
-st.subheader("Ask a follow-up")
-st.caption(
+st.subheader(t("Ask a follow-up"))
+st.caption(t(
     "The brief answers the first question. This answers the second — and it gets a **wider** "
     "packet than the brief did: this wallet's and merchant's history, the payout group, and the "
     "decision trail. Same rules apply: every answer cites the fields it used, an answer that "
     "cannot be grounded is withheld rather than guessed, and **a question that asks the copilot "
     "to decide is refused, not answered.**"
-)
+))
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -331,36 +339,36 @@ with write_session() as _con:
     turns = load_conversation(_con, case_id)
 
 if fu_gate.quarantined:
-    st.warning(
+    st.warning(t(
         "Free text on this wallet's or merchant's other transactions matched injection patterns "
-        "and was withheld from the model before any question was asked.",
-        icon="🛡️",
-    )
+        "and was withheld from the model before any question was asked."
+    ), icon="🛡️")
 
 for turn in turns:
     with st.chat_message("user"):
         st.write(turn.question)
         if turn.asked_by:
-            st.caption(f"asked by {turn.asked_by}")
+            st.caption(f"{t('asked by')} {turn.asked_by}")
     with st.chat_message("assistant", avatar="🛡️"):
         if turn.refused_delegation:
             st.error(turn.answer)
-            st.caption(f"refused · {turn.decline_reason}")
+            st.caption(f"{t('refused')} · {turn.decline_reason}")
         elif turn.answered:
             st.write(turn.answer)
             if turn.citations:
                 st.markdown(
-                    f"<div class='evidence'>cites: {', '.join(turn.citations)}</div>",
+                    f"<div class='evidence'>{t('cites:')} "
+                    f"{', '.join(turn.citations)}</div>",
                     unsafe_allow_html=True,
                 )
         else:
-            st.info(turn.decline_reason or "No answer could be grounded.")
+            st.info(turn.decline_reason or t("No answer could be grounded."))
         if turn.guardrail_reasons:
             st.caption(" · ".join(turn.guardrail_reasons))
 
 openers = suggested_questions(fu_packet, fu_context)
 if openers:
-    st.caption("Questions these packets can answer:")
+    st.caption(t("Questions these packets can answer:"))
     opener_columns = st.columns(min(len(openers), 3))
     for index, opener in enumerate(openers[:3]):
         if opener_columns[index].button(opener, key=f"opener_{index}",
@@ -368,7 +376,7 @@ if openers:
             st.session_state["pending_question"] = opener
 
 pending = st.session_state.pop("pending_question", None)
-typed = st.chat_input("Ask about this wallet, this merchant, the money, or a signal…")
+typed = st.chat_input(t("Ask about this wallet, this merchant, the money, or a signal…"))
 question = pending or typed
 
 if question:
@@ -386,7 +394,7 @@ if question:
 st.divider()
 
 # --- decision --------------------------------------------------------------
-st.subheader("Decision")
+st.subheader(t("Decision"))
 if str(case["case_state"]) in ("resolved_released", "resolved_held", "closed_false_positive"):
     st.info(
         f"This case is **{case['case_state']}** — decided `{case['resolution_action']}` with "
@@ -396,17 +404,17 @@ if str(case["case_state"]) in ("resolved_released", "resolved_held", "closed_fal
 else:
     with st.form("decision"):
         columns = st.columns([1, 1, 2])
-        action = columns[0].selectbox("Action", HUMAN_ACTIONS)
+        action = columns[0].selectbox(t("Action"), HUMAN_ACTIONS)
         default_reason = reason_for(action, str(case["primary_reason_family"]))
         reason_options = (
             ["RC_INSUFFICIENT_EVIDENCE"] if action == "request_information"
             else [r for r in REASON_CODE.names if r != "RC_POLICY_AUTO"]
         )
         reason_index = reason_options.index(default_reason) if default_reason in reason_options else 0
-        reason = columns[1].selectbox("Reason code", reason_options, index=reason_index)
-        note = columns[2].text_input("Note", placeholder="what settled it")
-        actor = st.text_input("Your identifier", value="analyst.demo")
-        submitted = st.form_submit_button("Commit decision", type="primary")
+        reason = columns[1].selectbox(t("Reason code"), reason_options, index=reason_index)
+        note = columns[2].text_input(t("Note"), placeholder=t("what settled it"))
+        actor = st.text_input(t("Your identifier"), value="analyst.demo")
+        submitted = st.form_submit_button(t("Commit decision"), type="primary")
 
     if submitted:
         try:
@@ -430,7 +438,7 @@ else:
             st.error(str(exc))
 
 # --- appeals ---------------------------------------------------------------
-st.markdown("**Appeals**")
+st.markdown(f"**{t('Appeals')}**")
 case_appeals = appeals[appeals["case_id"] == case_id]
 if not case_appeals.empty:
     st.dataframe(
@@ -442,13 +450,13 @@ if not case_appeals.empty:
     if not open_appeals.empty:
         appeal_id = str(open_appeals.iloc[0]["appeal_id"])
         columns = st.columns([1, 1, 3])
-        if columns[0].button("Accept appeal", type="primary"):
+        if columns[0].button(t("Accept appeal"), type="primary"):
             with write_session() as con:
                 resolve_appeal(con, appeal_id=appeal_id, actor_id="analyst.demo", accepted=True,
                                note="Evidence resolves the signals.")
             st.cache_data.clear()
             st.rerun()
-        if columns[1].button("Reject appeal"):
+        if columns[1].button(t("Reject appeal")):
             with write_session() as con:
                 resolve_appeal(con, appeal_id=appeal_id, actor_id="analyst.demo", accepted=False,
                                note="Evidence does not resolve the signals.")
@@ -457,12 +465,14 @@ if not case_appeals.empty:
 elif str(case["case_state"]) in ("resolved_held", "resolved_released"):
     with st.form("appeal"):
         columns = st.columns([1, 1, 2])
-        claimant = columns[0].selectbox("Claimant", ["payer", "merchant"])
+        claimant = columns[0].selectbox(t("Claimant"), ["payer", "merchant"])
         evidence = columns[1].selectbox(
-            "Evidence", ["travel_itinerary", "boarding_pass", "delivery_receipt", "bank_statement"]
+            t("Evidence type"),
+            ["travel_itinerary", "boarding_pass", "delivery_receipt", "bank_statement"]
         )
-        evidence_note = columns[2].text_input("Note", placeholder="what the claimant supplied")
-        filed = st.form_submit_button("File appeal")
+        evidence_note = columns[2].text_input(t("Note"),
+                                              placeholder="what the claimant supplied")
+        filed = st.form_submit_button(t("File appeal"))
     if filed:
         with write_session() as con:
             file_appeal(con, case_id=case_id, filed_by="support.demo", claimant=claimant,
@@ -470,12 +480,12 @@ elif str(case["case_state"]) in ("resolved_held", "resolved_released"):
         st.cache_data.clear()
         st.rerun()
 else:
-    st.caption("A case can be appealed once it has been resolved.")
+    st.caption(t("A case can be appealed once it has been resolved."))
 
-st.markdown("**Decision history**")
+st.markdown(f"**{t('Decision history')}**")
 case_decisions = decisions[decisions["case_id"] == case_id].sort_values("decided_at")
 if case_decisions.empty:
-    st.caption("No decision has been committed on this case yet.")
+    st.caption(t("No decision has been committed on this case yet."))
 else:
     st.dataframe(
         case_decisions[["decided_at", "actor_role", "actor_id", "action", "reason_code",
