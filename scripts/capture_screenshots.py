@@ -28,7 +28,9 @@ VIEWPORT = {"width": 1600, "height": 1200}
 # Chinese page illustrated with English screenshots is exactly the half-finished
 # look this project spent effort avoiding elsewhere.
 PAGES: list[tuple[str, str, int]] = [
-    ("01-overview", "/Overview", 7),
+    # The default page is served at the root; "/Overview" is not a route and
+    # Streamlit answers it with a "Page not found" dialog over the content.
+    ("01-overview", "/", 7),
     ("02-case-queue", "/Case_Queue", 7),
     ("03-case-detail", "/Case_Detail", 9),
     ("04-audit-log", "/Audit_Log", 8),
@@ -74,6 +76,11 @@ def main() -> int:
             page.wait_for_timeout(1200)
             page.mouse.wheel(0, -2000)
             page.wait_for_timeout(1200)
+            # A screenshot script that silently captures Streamlit's "Page not
+            # found" dialog is worse than one that crashes: the PNG looks
+            # plausible in a file listing and ships to the README.
+            if page.get_by_text("Page not found", exact=False).count():
+                raise RuntimeError(f"{url} is not a route (Streamlit: page not found)")
             page.screenshot(path=str(OUTPUT / filename), full_page=False)
         browser.close()
 

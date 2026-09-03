@@ -23,6 +23,8 @@ That last one is a limitation, stated on screen rather than hidden.
 
 from __future__ import annotations
 
+import re
+
 import streamlit as st
 
 LANGUAGES = {"en": "English", "zh": "中文"}
@@ -434,6 +436,78 @@ def t(text: str) -> str:
     """Translate, falling back to the English source text."""
     if current_language() == "zh":
         return ZH.get(text, text)
+    return text
+
+
+# --------------------------------------------------------------------------- #
+# Diagnostic reasons
+#
+# The guardrails and the conversation layer emit English reason strings, and
+# those strings are written to the audit log verbatim. That is deliberate: an
+# audit trail whose wording changes with whoever happened to be reading is not
+# an audit trail. The interface still has to show them in the reader's language,
+# so they are translated here, at display, and by pattern - every one of them
+# carries a count, a threshold or a machine code that has to pass through
+# unchanged. Order matters: the more specific pattern is listed first.
+# --------------------------------------------------------------------------- #
+
+_REASON_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"^no question was asked$"), "没有提出问题"),
+    (re.compile(r"^the question asked the copilot to make or take the decision: (.+)$"),
+     r"该问题要求副驾代为做出或执行决策:\1"),
+    (re.compile(r"^delegation of the decision was refused$"), "已拒绝交出决策权"),
+    (re.compile(r"^the model provider was unreachable, so no answer was produced\. "
+                r"The case, its evidence and the decision controls are unaffected\.$"),
+     "模型服务不可达,未生成回答。案件、证据与决策控件均不受影响。"),
+    (re.compile(r"^provider degraded: (.+)$"), r"模型服务降级:\1"),
+    (re.compile(r"^the model returned something that is not a valid answer$"),
+     "模型返回的内容不是一个有效回答"),
+    (re.compile(r"^response was not parseable$"), "响应无法解析"),
+    (re.compile(r"^the generated answer claimed an action had been taken$"),
+     "生成的回答声称某个动作已被执行"),
+    (re.compile(r"^the answer asserted that an action had been taken; only a person or "
+                r"the deterministic policy may act, so it was discarded$"),
+     "该回答断言动作已被执行;只有人或确定性策略可以执行动作,因此整条丢弃"),
+    (re.compile(r"^(\d+) citation\(s\) did not resolve and were removed: (.+)$"),
+     r"\1 条引用无法落地,已移除:\2"),
+    (re.compile(r"^(\d+) citation\(s\) did not resolve: (.+)$"),
+     r"\1 条引用无法落地:\2"),
+    (re.compile(r"^the answer could not be grounded in the case or entity packets, so it "
+                r"was withheld rather than shown as a guess$"),
+     "该回答无法在案件包或实体包中落地,因此被扣下,而不是当作猜测展示"),
+    (re.compile(r"^no citation resolved; answer withheld$"), "没有任何引用落地;回答已扣下"),
+    (re.compile(r"^(\d+) PII-shaped string\(s\) redacted before display$"),
+     r"展示前已脱敏 \1 处疑似个人信息"),
+    (re.compile(r"^(\d+) finding\(s\) cited nothing in the case packet and were removed "
+                r"as ungrounded$"),
+     r"\1 条结论未引用案件包中的任何内容,已作为无依据移除"),
+    (re.compile(r"^confidence scaled to ([\d.]+) because only (\d+) of (\d+) findings "
+                r"were grounded$"),
+     r"置信度已下调至 \1,因为 \3 条结论中只有 \2 条有依据"),
+    (re.compile(r"^recommended action (.+) is not one of (.+); downgraded to abstain$"),
+     r"建议动作 \1 不在 \2 之内,已降级为弃权"),
+    (re.compile(r"^confidence ([\d.]+) is below the ([\d.]+) floor; recommendation "
+                r"downgraded to abstain$"),
+     r"置信度 \1 低于 \2 的下限,建议已降级为弃权"),
+    (re.compile(r"^no grounded findings survived; recommendation downgraded to abstain$"),
+     "没有任何有依据的结论留存,建议已降级为弃权"),
+]
+
+
+def translate_reason(text: str) -> str:
+    """Render one engine reason string in the reader's language.
+
+    Falls through to the original text rather than raising or blanking: a
+    diagnostic the reader cannot understand is still better than a diagnostic
+    that silently disappeared. `test_i18n.py` is what stops that fallthrough
+    from becoming the normal case.
+    """
+    if not text or current_language() == "en":
+        return text
+    for pattern, replacement in _REASON_PATTERNS:
+        translated, count = pattern.subn(replacement, text.strip())
+        if count:
+            return translated
     return text
 
 

@@ -207,3 +207,59 @@ class TestCriticalStrings:
         # These three carry the product's central claims. A reviewer reading the
         # Chinese interface must get the claims, not the labels around them.
         assert text in ZH, f"not translated: {text[:60]!r}"
+
+
+class TestReasonTranslation:
+    """The guardrails speak canonical English into the audit log; the interface
+    has to speak the reader's language. `translate_reason` is the seam."""
+
+    @pytest.mark.parametrize(
+        ("reason", "must_survive"),
+        [
+            ("delegation of the decision was refused", []),
+            (
+                "the question asked the copilot to make or take the decision: "
+                "asked_ai_to_act",
+                ["asked_ai_to_act"],
+            ),
+            ("4 PII-shaped string(s) redacted before display", ["4"]),
+            (
+                "confidence 0.31 is below the 0.55 floor; recommendation "
+                "downgraded to abstain",
+                ["0.31", "0.55"],
+            ),
+            ("provider degraded: connection refused", ["connection refused"]),
+        ],
+    )
+    def test_translated_and_the_numbers_survive(
+        self, reason: str, must_survive: list[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The counts, thresholds and machine codes inside a reason have to pass
+        through untouched - they are the part a reviewer acts on."""
+        import _i18n
+
+        monkeypatch.setattr(_i18n, "current_language", lambda: "zh")
+        translated = _i18n.translate_reason(reason)
+        assert translated != reason, f"not translated: {reason}"
+        for fragment in must_survive:
+            assert fragment in translated, (
+                f"{fragment!r} was lost in translation: {translated}"
+            )
+
+    def test_english_is_left_alone(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import _i18n
+
+        monkeypatch.setattr(_i18n, "current_language", lambda: "en")
+        reason = "delegation of the decision was refused"
+        assert _i18n.translate_reason(reason) == reason
+
+    def test_unknown_reason_falls_through_rather_than_vanishing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A diagnostic the reader cannot understand beats one that disappeared."""
+        import _i18n
+
+        monkeypatch.setattr(_i18n, "current_language", lambda: "zh")
+        assert _i18n.translate_reason("not a reason anyone translated") == (
+            "not a reason anyone translated"
+        )

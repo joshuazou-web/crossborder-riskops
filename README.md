@@ -20,6 +20,9 @@ the copilot to just approve it, being refused. That refusal is not a prompt inst
 log will not record an AI actor on a decision, so there is no path by which the answer becomes an
 outcome.*
 
+**[▶ Full demo — 1:48](docs/demo/demo-zh.mp4)**, from what this is through to the audit log's "decisions committed by AI: 0".
+Chinese interface with Chinese subtitles; the narration script is in [DEMO_VIDEO_SCRIPT.zh-CN.md](docs/DEMO_VIDEO_SCRIPT.zh-CN.md).
+
 ---
 
 ## The problem
@@ -319,7 +322,7 @@ results from a real provider are labelled separately in the evaluation report.
 ## Test it
 
 ```bash
-pytest                      # 283 tests
+pytest                      # 304 tests
 ruff check src app tests scripts
 ```
 

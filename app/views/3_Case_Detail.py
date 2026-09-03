@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from _i18n import t  # noqa: E402
+from _i18n import t, translate_reason  # noqa: E402
 from _shared import money, page_setup, pill, synthetic_banner, write_session  # noqa: E402
 from riskops.ai.conversation import (  # noqa: E402
     ask,
@@ -287,7 +287,7 @@ with ai_column:
                     "automated reader. It was withheld from the model. Whatever explanation it "
                     "contained has to be obtained from a person instead."
                 )
-            for reason in guard.reasons:
+            for reason in (translate_reason(r) for r in guard.reasons):
                 st.caption(f"• {reason}")
 
 st.divider()
@@ -354,7 +354,7 @@ for turn in turns:
             # A fixed product sentence, so it is translated for display. The
             # audit record keeps the canonical English either way.
             st.error(t(turn.answer))
-            st.caption(f"{t('refused')} · {turn.decline_reason}")
+            st.caption(f"{t('refused')} · {translate_reason(turn.decline_reason)}")
         elif turn.answered:
             st.write(turn.answer)
             if turn.citations:
@@ -364,9 +364,10 @@ for turn in turns:
                     unsafe_allow_html=True,
                 )
         else:
-            st.info(turn.decline_reason or t("No answer could be grounded."))
+            st.info(translate_reason(turn.decline_reason)
+                    or t("No answer could be grounded."))
         if turn.guardrail_reasons:
-            st.caption(" · ".join(turn.guardrail_reasons))
+            st.caption(" · ".join(translate_reason(r) for r in turn.guardrail_reasons))
 
 openers = suggested_questions(fu_packet, fu_context)
 if openers:

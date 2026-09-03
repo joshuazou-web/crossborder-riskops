@@ -17,6 +17,9 @@
 *左边是证据,右边是仅供参考的简报——然后一位被队列压着的分析师要求副驾驶「直接放行」,被拒绝了。
 这个拒绝不是写在提示词里的:审计日志不接受把 AI 记录为决策执行者,所以它的回答没有任何路径能变成一个结果。*
 
+**[▶ 完整演示 · 1 分 48 秒 · 中文界面,中文字幕](docs/demo/demo-zh.mp4)** —— 从这套东西是什么,一路到审计日志上那个「AI 提交的决策:0」。
+旁白稿在 [DEMO_VIDEO_SCRIPT.zh-CN.md](docs/DEMO_VIDEO_SCRIPT.zh-CN.md)。
+
 ---
 
 ## 问题
@@ -294,7 +297,7 @@ python -m riskops export            # 把每张 mart 表导出为 CSV
 ## 怎么测
 
 ```bash
-pytest                      # 283 个测试
+pytest                      # 304 个测试
 ruff check src app tests scripts
 ```
 
