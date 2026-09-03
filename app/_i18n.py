@@ -33,7 +33,7 @@ DEFAULT_LANGUAGE = "en"
 # English source text -> Chinese. Everything not in here falls back to English.
 ZH: dict[str, str] = {
     # --- chrome and shared ---------------------------------------------
-    "CrossBorder RiskOps": "CrossBorder RiskOps 跨境支付风险运营工作台",
+    "CrossBorder AML RiskOps": "CrossBorder AML RiskOps 跨境支付反洗钱平台",
     "Cross-border payment risk operations workbench": "跨境支付风险运营工作台",
     "Last build": "最近构建",
     "seed": "随机种子",
@@ -199,7 +199,7 @@ ZH: dict[str, str] = {
     "SLA by risk band": "各风险等级的 SLA",
     "Handling times come from **simulated** analyst behaviour with a fixed error rate, not "
     "from observed human work.":
-        "处理时长来自采用固定错误率的**模拟**分析师行为,不是观测到的真人工作。",
+        "处理时长来自采用固定错误率的**模拟** 分析师行为,不是观测到的真人工作。",
     "Case state": "案件状态",
     "Reason family": "原因族",
     "Owning role": "归属角色",
@@ -372,7 +372,7 @@ ZH: dict[str, str] = {
         "每个点都是决策策略在该自动放行阈值下的一次真实运行。这不是「哪个最好」的选择——"
         "而是这个团队有多少分析师工时,以及业务能接受多少无人查看的漏检。",
     "This is the only screen where a product decision is made rather than a case decision.":
-        "这是全站唯一一个做**产品决策**而非案件决策的页面。",
+        "这是全站唯一一个做**产品决策** 而非案件决策的页面。",
     "Benign payments the machine stopped before any person read the case. Recall and "
     "precision are aggregate statistics; this one is a count of people who could not pay "
     "for something. It is recoverable through the appeal flow, which is why the product has "
@@ -437,6 +437,411 @@ def t(text: str) -> str:
     if current_language() == "zh":
         return ZH.get(text, text)
     return text
+
+
+# --------------------------------------------------------------------------- #
+# The cross-border AML layer
+#
+# Kept as its own table rather than merged into ZH above, so it is obvious which
+# strings belong to which product surface when either one changes. Merged into
+# ZH at import time, so `t()` needs no special case.
+#
+# Two translation choices worth stating, because both recur:
+#
+# "typology" is 典型学 rather than 类型 - it is the AML term of art for a named
+# pattern of behaviour, and 类型 would read as a generic category.
+#
+# The disposition and case-state keys (close_no_action, awaiting_information...)
+# are translated for display but the stored value stays English. The audit log
+# and the database hold the English key; only the label a person reads changes.
+# --------------------------------------------------------------------------- #
+
+ZH_AML: dict[str, str] = {
+    # -- page titles and navigation --
+    "Cross-border AML": "跨境反洗钱",
+    "Payment risk operations": "支付风险运营",
+    "Evidence and evaluation": "证据与评测",
+    "AML Operations": "反洗钱运营",
+    "AML Alert Queue": "反洗钱预警队列",
+    "Investigation Workbench": "调查工作台",
+    "AML Operations Overview": "反洗钱运营总览",
+
+    # -- alert queue --
+    "Alerts grouped into cases, ordered by investigation priority, and cut at the review "
+    "capacity a team of this size actually has.":
+        "预警聚合为案件,按调查优先级排序,并按这个规模的团队真实拥有的复核容量切分。",
+    "**A case below the capacity line has not been cleared.** It has not been reviewed. "
+    "Some of them contain patterns the evaluation counts as missed for exactly this reason, "
+    "and that number is reported rather than hidden.":
+        "**容量线以下的案件不等于已排除风险。** 它只是没有被人看过。其中一部分确实包含被注入的模式,"
+        "评测正是据此把它们计为漏检——这个数字是报出来的,不是藏起来的。",
+    "The queue": "队列",
+    "Open a case in the Investigation Workbench to see its evidence, what argues against it, "
+    "and what is missing.":
+        "在调查工作台打开案件,可以看到它的证据、反证,以及缺失了什么。",
+    "Priority bands": "优先级分档",
+    "Band cuts were calibrated against this seeded dataset, not taken from anywhere external. "
+    "A different population would need them re-cut.":
+        "分档阈值是对着这份固定种子的数据标定出来的,不是从任何外部标准取来的。换一批数据就需要重新标定。",
+    "Which typologies raised the alerts": "预警来自哪些典型学",
+    "A case can carry more than one typology. Several independent typologies on one account "
+    "is the strongest thing this system is able to say.":
+        "一个案件可以承载多条典型学。同一账户上出现多条相互独立的典型学,是这套系统能给出的最强论断。",
+    "Priority band": "优先级档位",
+    "Show": "显示",
+    "Account or case id": "账户或案件编号",
+    "#": "序",
+    "Account": "账户",
+    "Priority": "优先级",
+    "Band": "档位",
+    "Typologies": "典型学",
+    "Alerts": "预警",
+    "Transfers": "转账",
+    "Amount (USD)": "金额(美元)",
+    "State": "状态",
+    "In capacity": "在容量内",
+    "The AML layer has not been built yet. Run this once, then reload:":
+        "反洗钱层尚未构建。执行一次下面的命令,然后刷新:",
+    "After duplicates were collapsed. Each one names the transfers it rests on.":
+        "已合并重复项。每条预警都写明了它依据的转账。",
+    "Cases": "案件",
+    "An alert is not a case. A case is one subject over one window.":
+        "预警不等于案件。一个案件是一个主体在一个时间窗内的完整故事。",
+    "Within review capacity": "复核容量内",
+    "What a team of this size could open. Everything else waits.":
+        "这个规模的团队今天能打开的数量。其余的排队等待。",
+    "Backlog": "积压",
+    "Not cleared and not low-risk — simply not looked at yet.":
+        "不是已排除,也不是低风险——只是还没有人看。",
+    "Showing {shown} of {total} cases.": "显示 {shown} 条,共 {total} 条案件。",
+    "Within capacity": "容量内",
+
+    # -- workbench --
+    "Why these alerts were treated as one case:": "这些预警为什么被当作同一个案件:",
+    "Why this case is where it is in the queue": "这个案件为什么排在这个位置",
+    "Priority is an ordering, not a verdict. It answers 'which case should a person open "
+    "next', and says nothing about whether anything wrong happened here.":
+        "优先级是排序,不是结论。它回答的是「接下来应该先看哪一个」,"
+        "对这里是否真的发生了什么不作任何判断。",
+    "Customer and account": "客户与账户",
+    "What was found, and what would argue against it": "发现了什么,以及有什么会推翻它",
+    "Cross-border transfer timeline": "跨境转账时间线",
+    "Who this account moved money with": "这个账户与谁之间有资金往来",
+    "What we cannot see": "我们看不到的部分",
+    "A gap is a reason to request information, not on its own a reason to escalate. Missing "
+    "data is very often a defect at the sending institution.":
+        "信息缺失是补充材料的理由,本身不构成升级处理的理由。数据缺失往往是汇出机构的操作缺陷。",
+    "Record an investigation decision": "记录调查结论",
+    "This system organises evidence and orders a queue. It does not decide. It cannot freeze "
+    "an account, block a payment, file anything with any authority, or conclude that money "
+    "was laundered — no such action exists in the code, not merely in the interface.":
+        "这套系统整理证据、排列队列,它不做决定。它不能冻结账户、拦截支付、向任何机构提交任何东西,"
+        "也不能认定发生了洗钱——这些动作在代码里根本不存在,而不只是界面上没有按钮。",
+    "Claiming a case starts the SLA clock without recording an outcome — use it when you "
+    "begin work, so a case correctly left open awaiting information is not measured as slow.":
+        "认领案件只启动时效计时,不记录任何结论。开始工作时点它,这样一个正确地挂起等待材料的案件"
+        "不会被计成处理缓慢。",
+    "Claim this case": "认领此案件",
+    "Case summary": "案件摘要",
+    "This case sits below today's review capacity line. It is not cleared and not low-risk; "
+    "nobody has opened it.":
+        "这个案件落在今天的复核容量线以下。它不是已排除、也不是低风险——只是还没有人打开过。",
+    "Beneficial owners on file": "在册实际受益人",
+    "No beneficial owners recorded. For an individual customer that is expected; for a "
+    "business it is itself a gap.":
+        "没有登记实际受益人。个人客户属正常;企业客户则本身就是一处缺口。",
+    "No transfers resolved for this case.": "该案件没有可解析的转账。",
+    "No counterparties to show.": "没有可展示的交易对手。",
+    "At least one beneficial owner on this customer is unverified.":
+        "该客户至少有一名实际受益人未经核实。",
+    "This is a business customer with no beneficial owner recorded.":
+        "这是一个未登记任何实际受益人的企业客户。",
+    "No structural information gap was detected on this case.":
+        "该案件未检出结构性的信息缺口。",
+    "Reason (required)": "理由(必填)",
+    "Working notes (optional)": "工作备注(选填)",
+    "Alerts this decision rests on": "本结论所依据的预警",
+    "Record decision": "记录结论",
+    "Decisions already recorded on this case": "该案件已记录的结论",
+    "Your role": "你的角色",
+    "Disposition": "处置",
+    "What did you conclude, and from what? Name a transfer, an account, a typology or a "
+    "document.":
+        "你的结论是什么,依据是什么?请写明具体的转账、账户、典型学或文件。",
+    "Case claimed.": "案件已认领。",
+    "Priority band colours": "优先级档位配色",
+    "Queue position {n}": "队列第 {n} 位",
+    "What it read": "它读到了什么",
+    "Value": "取值",
+    "Owner reference": "受益人标识",
+    "Ownership %": "持股比例 %",
+    "Verification": "核实状态",
+    "An unusual transaction is not a laundered transaction. These are the ordinary "
+    "explanations to rule out before treating the pattern as a finding.":
+        "异常交易不等于洗钱交易。在把这个模式当作结论之前,先排除下面这些寻常解释。",
+    "outbound": "转出",
+    "inbound": "转入",
+    "Transfer": "转账",
+    "When": "时间",
+    "From": "付款方",
+    "To": "收款方",
+    "Currency": "币种",
+    "USD": "美元",
+    "Purpose": "用途",
+    "Channel": "通道",
+    "Beneficiary info": "收款人信息",
+    "Counterparty account": "对手账户",
+    "Direction": "方向",
+    "Country": "国家/地区",
+    "account": "账户",
+    "customer": "客户",
+    "transfers": "笔转账",
+    "sent to": "转出至",
+    "received from": "收自",
+    "{n} device(s) appear across more than one counterparty in this case. A shared device is "
+    "a link worth checking, and also the ordinary result of a family or an agent using one "
+    "terminal.":
+        "本案中有 {n} 台设备出现在不止一个交易对手上。共用设备是值得核查的关联,"
+        "但也可能只是一家人或一个代理点共用一台终端。",
+    "{n} of {total} transfers carry incomplete beneficiary information.":
+        "{total} 笔转账中有 {n} 笔收款人信息不完整。",
+    "{n} transfers declare no purpose at all.": "有 {n} 笔转账完全没有申报用途。",
+    "Reason": "理由",
+    "Factor": "因子",
+    "Points": "得分",
+    "Max weight": "权重上限",
+    "Field": "字段",
+    "Rule": "规则",
+    "version": "版本",
+    "Thresholds": "阈值",
+    "Measured": "实测",
+    "What would argue against this": "有什么会推翻这一点",
+    "Recorded. The case moved to {state}, and the decision, its reason and your identifier "
+    "are now in the hash-chained audit log.":
+        "已记录。案件已转为「{state}」,结论、理由与你的标识已写入哈希链式审计日志。",
+    "Customer": "客户",
+    "Type": "类型",
+    "Home country": "归属国家/地区",
+    "Industry": "行业",
+    "Onboarding risk level": "开户风险等级",
+    "Expected monthly volume (USD)": "申报月交易量(美元)",
+    "Profile last reviewed": "画像上次复核",
+    "Account country": "账户国家/地区",
+    "Opened": "开户时间",
+    "Account age (days)": "账龄(天)",
+    "Account type": "账户类型",
+    "This alert absorbed {n} duplicate firing(s) of the same finding.":
+        "该预警合并了同一发现的 {n} 次重复触发。",
+    "By": "操作人",
+    "Role": "角色",
+
+    # -- operations overview --
+    "Cross-border transfer volume, the alerts it produced, what aggregation did to them, and "
+    "how much of the result a team of this size can actually work.":
+        "跨境转账量、由此产生的预警、聚合对它们做了什么,"
+        "以及这个规模的团队实际能处理其中多少。",
+    "From alerts to a workable queue": "从预警到一个能干活的队列",
+    "The number that matters operationally is not how many alerts fired, but how many "
+    "separate things a person has to open.":
+        "运营上真正重要的不是触发了多少条预警,而是一个人要分别打开多少个东西。",
+    "Duplicate reduction": "重复消减",
+    "Alerts per case": "每案件预警数",
+    "Multi-typology cases": "多典型学案件",
+    "Where the money moves": "资金流向",
+    "What is aging": "哪些正在变老",
+    "A case opens when its most recent alert fired, not when the batch ran. Queue-waiting "
+    "time is one of the eight factors in investigation priority, so an old case eventually "
+    "rises whatever else it scores.":
+        "案件的开启时间是它最后一条预警触发的时刻,不是批处理运行的时刻。"
+        "排队时长是调查优先级八个因子之一,所以无论其他项得分如何,旧案件最终都会浮上来。",
+    "Share of raw firings that were repeats of a finding already reported.":
+        "原始触发中属于「已报告发现的重复」的比例。",
+    "1.00 would mean aggregation did nothing.": "等于 1.00 说明聚合什么也没做。",
+    "Cases where independent typologies corroborate each other.":
+        "多条相互独立的典型学彼此印证的案件。",
+    "Alerts by typology": "各典型学的预警数",
+    "A rule producing most of the volume is not necessarily the most useful rule — check it "
+    "against per-typology recall in the evaluation before tuning it.":
+        "产生最多量的规则未必是最有用的规则——调阈值之前,先对照评测里的分典型学召回率看一眼。",
+    "Corridors": "走廊",
+    "Channels": "通道",
+    "Currencies": "币种",
+    "Alert rate by corridor": "各走廊预警率",
+    "The agent cash-in channel carries more incomplete beneficiary data by construction, "
+    "which is why the missing-information typology names the channel as counter-evidence.":
+        "代理现金存入通道按设计就携带更多不完整的收款人信息,"
+        "这正是「信息缺失」典型学把通道列为反证的原因。",
+    "Amounts are compared on one normalised USD scale throughout, never on the presentment "
+    "amount — otherwise a JPY transfer looks a hundred times larger than an equivalent USD "
+    "one.":
+        "金额全程在统一的美元标准化口径上比较,绝不使用原始交易币种金额——"
+        "否则一笔日元转账看起来会比等值美元大一百倍。",
+    "Corridors with fewer than 30 transfers are excluded: a 100% alert rate over two "
+    "transfers is noise, and showing it would invite a conclusion about a country.":
+        "转账少于 30 笔的走廊被排除:两笔转账上的 100% 预警率是噪声,"
+        "展示它会诱导读者对某个国家得出结论。",
+    "Synthetic cross-border remittances generated from a fixed seed.":
+        "由固定随机种子生成的合成跨境汇款。",
+    "Payer and beneficiary accounts in different countries.":
+        "付款账户与收款账户位于不同国家/地区。",
+    "After duplicate firings were collapsed.": "已合并重复触发。",
+    "Alerts grouped by subject and window.": "按主体与时间窗聚合后的预警。",
+    "Not yet dispositioned.": "尚未作出处置。",
+    "Review capacity": "复核容量",
+    "How many a team of this size could open. The rest is backlog.":
+        "这个规模的团队能打开多少。其余的都是积压。",
+    "Unreviewed — not cleared, and not judged low-risk.":
+        "未复核——既不是已排除,也没有被判定为低风险。",
+    "Decisions recorded": "已记录结论",
+    "Every one by a named person with a written reason.":
+        "每一条都由具名的人作出,并附书面理由。",
+    "Raw alert firings": "原始预警触发",
+    "After duplicate collapse": "去重之后",
+    "After grouping into cases": "聚合为案件之后",
+    "under a day": "不到一天",
+    "1–7 days": "1–7 天",
+    "8–30 days": "8–30 天",
+    "over 30 days": "超过 30 天",
+    "In an alert": "命中预警",
+    "Alert rate": "预警率",
+
+    "Contribution to the priority score": "对优先级得分的贡献",
+
+    # -- the eight investigation-priority factors --
+    # Rendered through `parse_contributions`, so they reach t() as data rather
+    # than as literals. test_i18n asserts the table covers all eight.
+    "Signal strength": "信号强度",
+    "Corroborating typologies": "相互印证的典型学",
+    "Amount involved": "涉及金额",
+    "Movement speed": "资金速度",
+    "Network breadth": "关系网络广度",
+    "Missing information": "缺失信息",
+    "Customer risk history": "客户风险历史",
+    "Time waiting in queue": "排队等待时长",
+
+    # -- the six typologies --
+    "Structured transfers below a reporting threshold": "拆分至申报阈值以下的转账",
+    "Were several transfers sized to stay under a threshold rather than sized by need?":
+        "这几笔转账的金额,是按需要定的,还是为了压在阈值以下定的?",
+    "A payroll, rent or instalment schedule can produce similar amounts on a regular cadence.":
+        "工资、房租或分期付款计划本来就会按固定节奏产生金额相近的转账。",
+    "Per-transfer limits set by the customer's own bank or the channel can cap amounts "
+    "without any intent to avoid a threshold.":
+        "客户自己银行或通道设定的单笔限额,会在毫无规避意图的情况下压低每笔金额。",
+    "Check whether the same pattern is present in the months before the alert window; a "
+    "long-standing habit is weaker evidence than a new one.":
+        "查一下预警窗口之前几个月是否也是同样的模式;长期习惯远比新出现的行为证据力弱。",
+    "Funds forwarded cross-border shortly after arriving": "资金到账后短时间内跨境转出",
+    "Did this account hold the money, or only pass it on?":
+        "这个账户是持有了这笔钱,还是只是过了一下手?",
+    "Treasury sweeps, supplier settlement and payroll runs are all fast by design.":
+        "资金归集、供应商结算和工资发放,本来就设计成快速完成。",
+    "A named, consistent counterparty on both legs is a weaker signal than a new one.":
+        "两端都是有名有姓、长期稳定的交易对手,信号强度远低于新出现的对手。",
+    "Check whether the customer's declared business makes same-day forwarding normal.":
+        "查一下客户申报的经营范围是否本来就会当天转出。",
+    "Many unrelated senders converging on one account": "多个无关联付款方汇向同一账户",
+    "Why are these particular senders all paying the same account?":
+        "为什么偏偏是这些付款方都在付给同一个账户?",
+    "Merchants, marketplaces, schools and landlords are all legitimately many-to-one.":
+        "商户、平台、学校和房东本来就是合法的「多对一」。",
+    "Check the declared business: a collection account for a real business explains the "
+    "shape.":
+        "查一下申报的经营范围:真实业务的归集账户就能解释这个形状。",
+    "Remittance corridors concentrate by nature - many senders in one country paying one "
+    "family account is ordinary.":
+        "汇款走廊天然就是集中的——一个国家的许多汇款人打给同一个家庭账户很常见。",
+    "Funds returning to their origin through intermediaries": "资金经中间账户回到原点",
+    "Did this money travel, or only appear to?": "这笔钱真的走了一圈,还是只是看起来走了?",
+    "Intra-group treasury movements between accounts of one owner look circular and are "
+    "routine.":
+        "同一所有人名下账户之间的集团内部资金调拨看起来就是环形的,而且很常规。",
+    "A returned or reversed payment produces a two-hop cycle with an innocent cause; check "
+    "whether any leg is a refund.":
+        "退款或冲正会产生一个两跳的环,原因完全无辜;查一下其中是否有哪一段是退款。",
+    "FX round-tripping to obtain a better rate is legal in most corridors.":
+        "为拿到更好汇率而做的外汇往返操作,在多数走廊都是合法的。",
+    "Activity inconsistent with the declared profile": "行为与申报画像不符",
+    "Does this account behave like what the customer said it was for?":
+        "这个账户的行为,像不像客户当初说的用途?",
+    "A business that genuinely grew will breach its onboarding expectation; check whether "
+    "the rise is sustained or a spike.":
+        "真正增长的企业必然会突破开户时的预期;看一下是持续上升还是一次性尖峰。",
+    "One-off events - a property sale, an inheritance, a funding round - explain a single "
+    "large deviation.":
+        "一次性事件——卖房、继承、一轮融资——就能解释单次的大幅偏离。",
+    "A stale profile is a data problem, not a customer problem. Check when it was last "
+    "reviewed before treating the gap as a signal.":
+        "过期的画像是数据问题,不是客户问题。把这个落差当信号之前,先看它上次复核是什么时候。",
+    "Required payment information absent or unverified": "必需的支付信息缺失或未核实",
+    "Can we say who is on both ends of this money, and why it moved?":
+        "这笔钱的两端分别是谁、为什么要动,我们说得清楚吗?",
+    "Missing data is very often an operational defect at the sending institution, not "
+    "concealment - the fix is a request for information, not an escalation.":
+        "数据缺失通常是汇出机构的操作缺陷,而不是刻意隐瞒——对策是补材料,不是升级处理。",
+    "Some corridors and channels legitimately carry less structured data.":
+        "某些走廊和通道本来就携带较少的结构化数据。",
+    "Check whether the same fields are missing across all of that channel's traffic; a "
+    "systemic gap says nothing about this customer.":
+        "查一下这个通道的全部流量是不是都缺同样的字段;系统性缺口和这个客户没有关系。",
+
+    # -- dispositions and states --
+    "Close — no further action": "结案 —— 不采取进一步动作",
+    "The pattern is explained by the evidence on file. Closing says the alert was reviewed "
+    "and understood, not that the customer was cleared of anything.":
+        "在册证据已能解释这个模式。结案表示这条预警被看过并被理解了,"
+        "不表示客户被排除了任何嫌疑。",
+    "Keep under monitoring": "保持监测",
+    "Not explained, not sufficient to escalate. The account stays in scope and the next "
+    "alert on it will show this decision.":
+        "解释不通,但也不足以升级。账户仍在监测范围内,它的下一条预警会显示这个决定。",
+    "Request information": "补充材料",
+    "A specific, named gap has to be filled before the case can be judged. The gap must be "
+    "written in the reason so the request can be acted on by someone else.":
+        "必须先补齐一处具体、指名的缺口,案件才能判断。缺口要写进理由里,别人才好照着去要。",
+    "Send for enhanced review": "转强化复核",
+    "Needs deeper work than the queue allows - a longer lookback, related accounts, or a "
+    "second reviewer.":
+        "需要队列节奏容不下的更深入工作——更长的回溯期、关联账户,或者第二位复核人。",
+    "Escalate to the AML team": "升级至反洗钱团队",
+    "Hands the case to the responsible team for a decision this system does not make. "
+    "Escalation is a referral inside this prototype; it files nothing with anyone and "
+    "reaches no authority.":
+        "把案件交给负责团队,由他们作出这套系统不作的决定。"
+        "在这个原型里,升级只是内部转交:它不向任何人提交任何东西,也不触达任何机构。",
+    "close_no_action": "结案不处理",
+    "continue_monitoring": "保持监测",
+    "request_information": "补充材料",
+    "enhanced_review": "强化复核",
+    "escalate": "升级",
+    "closed_no_action": "已结案不处理",
+    "awaiting_information": "等待材料",
+    "escalated": "已升级",
+    "investigating": "调查中",
+    "monitoring": "监测中",
+    "new": "新建",
+    "queued": "已入队",
+
+    # -- roles and enumerations --
+    "aml_investigator": "反洗钱调查员",
+    "risk_ops_lead": "风险运营主管",
+    "admin_auditor": "审计管理员",
+    "individual": "个人",
+    "business": "企业",
+    "personal": "个人",
+    "verified": "已核实",
+    "unverified": "未核实",
+    "not_required": "无需提供",
+    "complete": "完整",
+    "partial": "部分",
+    "missing": "缺失",
+    "critical": "紧急",
+    "high": "高",
+    "medium": "中",
+    "low": "低",
+}
+
+ZH.update(ZH_AML)
 
 
 # --------------------------------------------------------------------------- #

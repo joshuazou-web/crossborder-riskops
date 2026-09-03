@@ -187,3 +187,64 @@ python -m riskops audit   # verify the hash chain
 Every figure in the README and the dashboard traces to `reports/evaluation.json`, which traces to a
 command you can run. If a number cannot be traced that way, it should not be there — please open an
 issue.
+
+---
+
+## 7. The AML layer, and what it specifically does not claim
+
+Added after the payment layer. Everything in sections 1–6 still applies to it;
+these are the claims that are specific to monitoring and investigation.
+
+### Not claimed
+
+- **That anything here detects money laundering.** The six typologies are
+  implementations of publicly described *patterns*. Whether real laundering looks
+  like this is an open question that only a practitioner could close. A typology
+  match means a shape is present, nothing more.
+- **That the recall figures transfer.** They are measured against patterns this
+  repository's own generator planted, in a population enriched with them by
+  orders of magnitude. Roughly 4% of transfers belong to an injected scenario; in
+  real traffic the equivalent would be a small fraction of a percent.
+- **That 22% alert precision is good or bad.** It is a property of this
+  generator's confounders. A real institution's figure would depend on its
+  customers, its corridors and its thresholds, none of which are represented.
+- **That 87% precision at review capacity means a team would find 87% of
+  laundering.** It means that of the cases this prioritisation puts inside a
+  capacity limit, 87% touch a pattern the generator planted. The two are not the
+  same sentence.
+- **That the thresholds are right.** 10,000 USD, 72 hours, 8 senders, 3 hops, 4×
+  the declared expectation — every one was chosen so the detectors behave
+  sensibly on this dataset. They carry no authority.
+- **That the priority weights are right.** Eight factors summing to 1.0, band
+  cuts at 0.45 / 0.36 / 0.25. Calibrated against seed 20260815 at 40,000
+  transfers by looking at the resulting distribution. No investigator has
+  validated the ordering, because no investigator has used this.
+- **That the counter-evidence lists are complete.** Two to three innocent
+  explanations per typology, written by someone who has never worked an alert
+  queue.
+
+### Specifically not done, and not pretended
+
+- No sanctions screening, PEP screening or watchlist matching. These cannot be
+  done honestly against synthetic data, so they are absent rather than faked.
+- No regulatory reporting of any kind. `escalate` is an internal referral inside
+  this prototype; it reaches no authority and its own description says so.
+- No account freezing, payment blocking or customer restriction. No such action
+  exists in the code.
+- No learned AML model, no graph neural network, no network-wide community
+  detection. The circular-flow detector is a bounded depth-first walk over at
+  most five hops, chosen so the evidence can name every leg.
+
+### What a reviewer should distrust first
+
+1. **Recall on `clear` scenarios is 1.000.** That is a plausible number for
+   patterns built comfortably inside a threshold, but it is also what a
+   circular evaluation would produce. The defence is the `below_threshold` row
+   at 0.162 — a detector matching everything would score high there too, and it
+   does not.
+2. **The generator and the detectors were written by the same person, in the
+   same week.** `AmlContext.blind()` stops a detector reading the answer key,
+   and a test enforces it, but nothing stops the two from sharing an assumption
+   about what a pattern looks like.
+3. **The confounders are hand-written.** Fast forwarders, collection accounts,
+   grown businesses and a lossy channel. Real noise is not a list of four things.

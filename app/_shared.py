@@ -1,4 +1,4 @@
-"""Shared plumbing for the CrossBorder RiskOps workbench.
+"""Shared plumbing for the CrossBorder AML RiskOps workbench.
 
 Two rules shape this module.
 
@@ -77,6 +77,18 @@ TABLES = [
     "audit.ai_invocations",
     "audit.validation_results",
     "audit.refresh_log",
+    # The AML layer. Loaded here with everything else rather than per page,
+    # because the workbench and the AML overview both need most of it and a
+    # second connection would hit the same "different configuration" refusal
+    # DuckDB raises for mixed read-only and read-write handles in one process.
+    "aml.customers",
+    "aml.accounts",
+    "aml.beneficial_owners",
+    "aml.transfers",
+    "aml.alerts",
+    "aml.cases",
+    "aml.scenarios",
+    "aml.investigation_decisions",
 ]
 
 # Colour is used for one thing only: risk severity. Everything else stays
@@ -120,7 +132,7 @@ def page_setup() -> dict[str, pd.DataFrame]:
     _inject_css()
     frames = load_tables()
     if not frames or frames.get("marts.fct_transactions", pd.DataFrame()).empty:
-        st.title("CrossBorder RiskOps")
+        st.title("CrossBorder AML RiskOps")
         st.warning(
             t("The warehouse has not been built yet. Run this once, then reload:")
             + "\n\n```\npython -m riskops demo\n```"
@@ -178,7 +190,7 @@ def _sidebar(frames: dict[str, pd.DataFrame]) -> None:
     settings = get_settings()
     refreshes = frames.get("audit.refresh_log", pd.DataFrame())
     with st.sidebar:
-        st.markdown(f"### {t('CrossBorder RiskOps')}")
+        st.markdown(f"### {t('CrossBorder AML RiskOps')}")
         st.caption(t("Cross-border payment risk operations workbench"))
         st.divider()
         if not refreshes.empty:

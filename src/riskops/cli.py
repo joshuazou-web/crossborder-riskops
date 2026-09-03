@@ -206,6 +206,42 @@ def cmd_export(_: argparse.Namespace) -> int:
     return 0
 
 
+
+def cmd_aml_build(args: argparse.Namespace) -> int:
+    """Generate the AML world, detect, deduplicate, aggregate and prioritise."""
+    from .aml import pipeline as aml_pipeline
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    report, _ = aml_pipeline.build(
+        settings, seed=args.seed, n_transfers=args.transfers, persist=True,
+    )
+    _print(report.as_dict())
+    return 0
+
+
+def cmd_aml_status(_: argparse.Namespace) -> int:
+    from .aml import pipeline as aml_pipeline
+
+    _print(aml_pipeline.snapshot(get_settings()))
+    return 0
+
+
+def cmd_aml_eval(args: argparse.Namespace) -> int:
+    from .aml import evaluate as aml_eval
+
+    settings = get_settings()
+    settings.ensure_dirs()
+    report = aml_eval.run(
+        settings,
+        seeds=args.seeds,
+        n_transfers=args.transfers,
+        write=not args.no_write,
+    )
+    _print(report["headline"])
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="riskops",
@@ -259,6 +295,26 @@ def build_parser() -> argparse.ArgumentParser:
                           help="also run an N-seed robustness sweep (about a minute per seed); "
                                "without it the report quotes a single run and says so")
     evaluate.set_defaults(func=cmd_eval)
+
+    aml = sub.add_parser("aml", help="the cross-border AML monitoring layer")
+    aml_sub = aml.add_subparsers(dest="aml_command", required=True)
+
+    aml_build = aml_sub.add_parser("build", help="generate, detect, aggregate, prioritise")
+    aml_build.add_argument("--seed", type=int, default=None)
+    aml_build.add_argument("--transfers", type=int, default=None,
+                           help="how many transfers to generate (default: 100,000)")
+    aml_build.set_defaults(func=cmd_aml_build)
+
+    aml_status = aml_sub.add_parser("status", help="row counts for the aml schema")
+    aml_status.set_defaults(func=cmd_aml_status)
+
+    aml_evaluate = aml_sub.add_parser("eval", help="run the AML evaluation suites")
+    aml_evaluate.add_argument("--seeds", type=int, nargs="*", default=None,
+                              help="seeds to sweep; the variance is reported across them")
+    aml_evaluate.add_argument("--transfers", type=int, default=None)
+    aml_evaluate.add_argument("--no-write", action="store_true",
+                              help="print the headline without writing the report file")
+    aml_evaluate.set_defaults(func=cmd_aml_eval)
 
     export = sub.add_parser("export", help="export every mart table to CSV")
     export.set_defaults(func=cmd_export)

@@ -149,6 +149,114 @@ Browser at <http://localhost:8501>, window at 1440×900 or wider.
 
 ---
 
+
+---
+
+## The AML route (three minutes, the newer half)
+
+Run this instead of the payment walkthrough if the audience cares about
+monitoring, investigation or AI safety. Run both only if you have ten minutes.
+
+### 0:00 – 0:25 · The constraint, not the technology
+
+Open **反洗钱运营 / AML Operations** (the landing page).
+
+> "Forty thousand synthetic cross-border transfers. They produced 1,638 raw
+> alert firings. After collapsing repeats: 957 alerts. Grouped into cases: 693.
+> And a team of this size can open **242**.
+>
+> That last number is the product. Everything else is arithmetic."
+
+Point at the funnel chart. Do not talk about the typologies yet.
+
+### 0:25 – 0:50 · An alert is not a case
+
+> "A detector re-runs its lookback every day new data arrives, exactly like a
+> nightly batch job. So one pattern fires again and again until it ages out.
+> Forty-two per cent of those firings were repeats.
+>
+> Then alerts about the same account in the same month become one case — and the
+> reason they were merged is written on the case, because a merge is a judgement
+> and an investigator has to be able to overturn it."
+
+### 0:50 – 1:20 · The queue, and the honest part
+
+Open **反洗钱预警队列 / AML Alert Queue**.
+
+> "Ordered by investigation priority, cut at capacity. And here" — point at the
+> blue notice — "is the sentence most systems leave out:
+>
+> **A case below the capacity line has not been cleared. It has not been
+> reviewed.**
+>
+> The evaluation reports how many planted patterns are sitting in that backlog.
+> It is a headline row, not a footnote."
+
+### 1:20 – 2:10 · The workbench
+
+Open **调查工作台 / Investigation Workbench** on the top case.
+
+> "Three independent typologies on one account. That is the strongest thing this
+> system can say, and it is why this case is first.
+>
+> Priority is eight weighted factors and you can see all eight" — scroll to the
+> breakdown — "so if you disagree with the ordering you can see exactly which
+> factor put it there. Corroboration alone is 0.18 of the weight, and a case with
+> one typology earns none of it.
+>
+> Now the layout." Scroll to the evidence.
+>
+> "Left: what was found, with the thresholds it was measured against and every
+> transfer id it rests on. Right, **beside it rather than below it**: what would
+> argue against it. Payroll schedules. Bank-imposed transfer limits. Whether the
+> declared business makes this normal.
+>
+> That placement is the whole design. A reviewer under queue pressure reads
+> top-down and stops early, so the counter-evidence cannot be at the bottom."
+
+### 2:10 – 2:35 · What it refuses
+
+Scroll to the disposition control.
+
+> "Five dispositions. Close, monitor, request information, enhanced review,
+> escalate. Notice what is not there: nothing meaning *confirmed laundering*,
+> nothing meaning *filed*, nothing meaning *frozen*. Not greyed out — **absent
+> from the vocabulary**, because a dropdown is a claim about what a system does.
+>
+> A reason is mandatory, and escalating requires naming what specifically
+> prompted it. 'Looks suspicious' is refused.
+>
+> And the whole detection loop imports no model at all. Not 'the AI is advisory'
+> — there is no AI in this path. A test walks the import graph to prove it."
+
+Try recording a disposition as `ai_copilot` if you want to show the refusal.
+
+### 2:35 – 3:00 · The numbers, and the number that matters
+
+Open [AML_EVALUATION_REPORT.md](AML_EVALUATION_REPORT.md).
+
+> "Raw alert precision: **22%**. Precision inside review capacity: **87%**.
+> That gap is what prioritisation is for.
+>
+> And recall by difficulty — this is the row I would check first if someone
+> showed me this. Scenarios built *outside* the thresholds on purpose:
+> **16% found**. If that number were high, the detectors would be firing on
+> noise and every other figure here would be worthless.
+>
+> All of it synthetic, seeded, enriched, and stated as such at the top of the
+> file."
+
+### If someone asks "could this go into production"
+
+The honest answer, and a better one than yes:
+
+> "No, and the interesting part is the list of reasons. No sanctions screening.
+> No real data. Thresholds calibrated against a generator I wrote. Nobody who
+> has actually worked an alert queue has looked at the counter-evidence lists.
+> What it does demonstrate is the shape of the decision — what a monitoring
+> product should refuse to do, and how you would enforce that in code rather
+> than in a policy document."
+
 ## If the audience reads Chinese
 
 Open with `?lang=zh`, or click 中文 at the top-right of any page. Worth saying out loud while you

@@ -134,6 +134,18 @@ class Settings:
             ai_min_confidence=_env_float("RISKOPS_AI_MIN_CONFIDENCE", 0.55),
             ai_redact_pii=_env_bool("RISKOPS_AI_REDACT_PII", True),
             log_level=os.getenv("RISKOPS_LOG_LEVEL", "INFO"),
+            extra={
+                # The AML generator's default size. The committed demo warehouse
+                # is built smaller (see the Makefile) so the repository stays a
+                # reasonable size to clone; the default here is what `riskops aml
+                # build` produces when nobody says otherwise, and what the
+                # evaluation runs against.
+                "aml_n_transfers": _env_int("RISKOPS_AML_N_TRANSFERS", 100_000),
+                # How many cases the team can actually open. Zero means "derive
+                # it from the case count"; a real number is what makes the queue
+                # a queue. Deliberately far below the alert count.
+                "aml_review_capacity": _env_int("RISKOPS_AML_REVIEW_CAPACITY", 0),
+            },
         )
 
     def sla_hours(self, band: str) -> int:

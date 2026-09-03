@@ -28,20 +28,25 @@ VIEWPORT = {"width": 1600, "height": 1200}
 # Chinese page illustrated with English screenshots is exactly the half-finished
 # look this project spent effort avoiding elsewhere.
 PAGES: list[tuple[str, str, int]] = [
-    # The default page is served at the root; "/Overview" is not a route and
-    # Streamlit answers it with a "Page not found" dialog over the content.
-    ("01-overview", "/", 7),
-    ("02-case-queue", "/Case_Queue", 7),
-    ("03-case-detail", "/Case_Detail", 9),
-    ("04-audit-log", "/Audit_Log", 8),
-    ("05-transaction-explorer", "/Transaction_Explorer", 7),
-    ("06-evaluation", "/Evaluation", 8),
+    # The router's default page is served at the root. Its own url_path is NOT a
+    # route, and asking for it gets Streamlit's "Page not found" dialog over the
+    # content - which shipped in the README once already. The check below refuses
+    # to photograph that rather than saving a plausible-looking PNG.
+    ("01-aml-operations", "/", 9),
+    ("02-aml-alert-queue", "/AML_Alert_Queue", 9),
+    ("03-investigation-workbench", "/Investigation_Workbench", 12),
+    ("04-overview", "/Overview", 7),
+    ("05-case-queue", "/Case_Queue", 7),
+    ("06-case-detail", "/Case_Detail", 9),
+    ("07-audit-log", "/Audit_Log", 8),
+    ("08-transaction-explorer", "/Transaction_Explorer", 7),
+    ("09-evaluation", "/Evaluation", 8),
     # The tuning page computes a 36-point policy curve on first load, so it needs
     # longer to settle than the others.
-    ("07-policy-tuning", "/Policy_Tuning", 14),
+    ("10-policy-tuning", "/Policy_Tuning", 14),
     # A case carrying a seeded conversation that includes a refused request to
     # hand over the decision - the behaviour the screenshot exists to show.
-    ("08-followup", "/Case_Detail?case=CASE_0000862", 12),
+    ("11-followup", "/Case_Detail?case=CASE_0000862", 12),
 ]
 
 LANGUAGES = ("en", "zh")
