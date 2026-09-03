@@ -246,7 +246,7 @@ They describe the simulation's parameters, not a real team.
 | **Case detail** — evidence on the left, the advisory brief on the right, the decision controls below. | **Audit log** — hash-chained, with the AI-versus-human disagreement matrix. |
 | ![Policy tuning](docs/screenshots/07-policy-tuning.png) | ![Follow-up](docs/screenshots/08-followup.png) |
 | **Policy tuning** — the two automatic thresholds as a product decision, with the recall-against-review-rate curve you are choosing a point on. | **Follow-up** — the analyst's second question, answered from a wider packet, and a request to hand over the decision being refused. |
-| ![Chinese interface](docs/screenshots/09-chinese.png) | ![Evaluation](docs/screenshots/06-evaluation.png) |
+| ![Chinese interface](docs/screenshots/01-overview-zh.png) | ![Evaluation](docs/screenshots/06-evaluation.png) |
 | **中文界面** — one click, top-right. Identifiers, money and generated evidence stay untranslated on purpose. | **Evaluation** — every metric, with the caveats expanded above them rather than in a footnote. |
 
 ---

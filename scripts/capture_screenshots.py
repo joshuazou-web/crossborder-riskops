@@ -23,24 +23,26 @@ OUTPUT = PROJECT_ROOT / "docs" / "screenshots"
 BASE_URL = "http://localhost:8501"
 VIEWPORT = {"width": 1600, "height": 1200}
 
-# (filename, path, settle seconds, optional case to preselect)
+# (stem, path, settle seconds). Each is captured in BOTH languages: the English
+# README shows the English interface and the Chinese one shows Chinese, because a
+# Chinese page illustrated with English screenshots is exactly the half-finished
+# look this project spent effort avoiding elsewhere.
 PAGES: list[tuple[str, str, int]] = [
-    ("01-overview.png", "/Overview", 7),
-    ("02-case-queue.png", "/Case_Queue", 7),
-    ("03-case-detail.png", "/Case_Detail", 9),
-    ("04-audit-log.png", "/Audit_Log", 8),
-    ("05-transaction-explorer.png", "/Transaction_Explorer", 7),
-    ("06-evaluation.png", "/Evaluation", 8),
+    ("01-overview", "/Overview", 7),
+    ("02-case-queue", "/Case_Queue", 7),
+    ("03-case-detail", "/Case_Detail", 9),
+    ("04-audit-log", "/Audit_Log", 8),
+    ("05-transaction-explorer", "/Transaction_Explorer", 7),
+    ("06-evaluation", "/Evaluation", 8),
     # The tuning page computes a 36-point policy curve on first load, so it needs
     # longer to settle than the others.
-    ("07-policy-tuning.png", "/Policy_Tuning", 14),
-    # A case that carries a seeded conversation including a refused request to
+    ("07-policy-tuning", "/Policy_Tuning", 14),
+    # A case carrying a seeded conversation that includes a refused request to
     # hand over the decision - the behaviour the screenshot exists to show.
-    ("08-followup.png", "/Case_Detail?case=CASE_0000862", 12),
-    # The same screen in Chinese. The interface translates; identifiers, money
-    # and generated evidence deliberately do not.
-    ("09-chinese.png", "/?lang=zh", 8),
+    ("08-followup", "/Case_Detail?case=CASE_0000862", 12),
 ]
+
+LANGUAGES = ("en", "zh")
 
 
 def main() -> int:
@@ -55,7 +57,14 @@ def main() -> int:
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page(viewport=VIEWPORT, device_scale_factor=2)
-        for filename, path, settle in PAGES:
+        takes = [
+            (f"{stem}.png" if language == "en" else f"{stem}-zh.png",
+             f"{path}{'&' if '?' in path else '?'}lang={language}",
+             settle)
+            for stem, path, settle in PAGES
+            for language in LANGUAGES
+        ]
+        for filename, path, settle in takes:
             url = f"{BASE_URL}{path}"
             print(f"  {filename:<32} {url}")
             page.goto(url, wait_until="load", timeout=60_000)

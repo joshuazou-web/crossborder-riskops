@@ -44,10 +44,26 @@ REFUSAL_TEXT = {
     "zh": "我不能做这个决定",
 }
 
-# Small viewport, because every pixel is paid for twice in a GIF.
 VIEWPORT = {"width": 1280, "height": 800}
-FPS = 10
-GIF_WIDTH = 960
+
+# Quality decisions, all of them trade-offs against file size:
+#
+#   CROP    the sidebar is static for the whole clip and unreadable at GIF scale,
+#           so it is cut. Removing it buys every remaining pixel back for the
+#           content, which is where the text is.
+#   scale   none. Cropping instead of downscaling is what keeps the text sharp -
+#           a 1280 -> 960 resample turns 12px UI type into grey mush.
+#   COLORS  200, not 128. Flat UI panels band visibly below ~192.
+#   dither  sierra2_4a, not bayer. Bayer lays an ordered crosshatch over large
+#           flat areas, which is most of this interface.
+#   TRIM    the first seconds are Streamlit loading. Nobody needs to watch that.
+#   SPEED   1.45x. The recording pauses generously so it cannot race ahead of a
+#           rerun; the viewer does not have to sit through the same margin.
+CROP = "980:800:300:0"          # w:h:x:y - drops the sidebar
+FPS = 12
+COLORS = 200
+TRIM_SECONDS = 7.5
+SPEED = 1.45
 
 
 def _clear_conversation() -> None:
@@ -80,14 +96,14 @@ def _record(language: str, question: str, destination: Path) -> Path:
         page.wait_for_timeout(9_000)          # Streamlit settles
 
         # Hold on the case header, the evidence and the advisory brief.
-        page.wait_for_timeout(2_500)
+        page.wait_for_timeout(1_800)
 
         # Walk down through the signals and the brief rather than jumping, so a
         # viewer can actually read what is on screen.
-        for _ in range(9):
-            page.mouse.wheel(0, 190)
-            page.wait_for_timeout(320)
-        page.wait_for_timeout(1_600)
+        for _ in range(8):
+            page.mouse.wheel(0, 210)
+            page.wait_for_timeout(230)
+        page.wait_for_timeout(1_100)
 
         # Ask the copilot to make the decision.
         box = page.get_by_placeholder("Ask about", exact=False)
@@ -95,19 +111,19 @@ def _record(language: str, question: str, destination: Path) -> Path:
             box = page.locator("textarea").last
         box.scroll_into_view_if_needed()
         box.click()
-        box.type(question, delay=45)
-        page.wait_for_timeout(900)
+        box.type(question, delay=38)
+        page.wait_for_timeout(700)
         box.press("Enter")
 
         # Streamlit reruns and resets the scroll position, and the conversation
         # renders *above* the decision controls - so blind wheel-scrolling lands
         # past it. Seek the refusal itself instead.
-        page.wait_for_timeout(9_000)
+        page.wait_for_timeout(8_000)
         refusal = page.get_by_text(REFUSAL_TEXT[language], exact=False).first
         if refusal.count():
             refusal.scroll_into_view_if_needed()
             page.mouse.wheel(0, -120)          # a little headroom above it
-        page.wait_for_timeout(5_000)
+        page.wait_for_timeout(4_000)
 
         video = page.video
         context.close()
@@ -122,18 +138,23 @@ def _record(language: str, question: str, destination: Path) -> Path:
 
 
 def _to_gif(webm: Path, gif: Path) -> None:
-    """Two-pass palette conversion - a shared 128-colour palette is far smaller
-    than per-frame quantisation and this file lives in the repository."""
+    """Two-pass palette conversion: crop, speed up, then quantise once.
+
+    One shared palette across the clip rather than per-frame quantisation - the
+    interface barely changes colour, so a single palette is both smaller and
+    steadier than a palette that shifts every frame.
+    """
     palette = webm.with_suffix(".png")
-    common = f"fps={FPS},scale={GIF_WIDTH}:-1:flags=lanczos"
+    common = f"crop={CROP},setpts=PTS/{SPEED},fps={FPS}"
     subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(webm),
-         "-vf", f"{common},palettegen=max_colors=128:stats_mode=diff", str(palette)],
+        ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(TRIM_SECONDS), "-i", str(webm),
+         "-vf", f"{common},palettegen=max_colors={COLORS}:stats_mode=diff", str(palette)],
         check=True,
     )
     subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(webm), "-i", str(palette),
-         "-lavfi", f"{common}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=4",
+        ["ffmpeg", "-y", "-loglevel", "error", "-ss", str(TRIM_SECONDS), "-i", str(webm),
+         "-i", str(palette),
+         "-lavfi", f"{common}[x];[x][1:v]paletteuse=dither=sierra2_4a:diff_mode=rectangle",
          "-loop", "0", str(gif)],
         check=True,
     )

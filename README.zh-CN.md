@@ -219,11 +219,11 @@
 
 | | |
 | --- | --- |
-| ![总览](docs/screenshots/09-chinese.png) | ![案件队列](docs/screenshots/02-case-queue.png) |
+| ![总览](docs/screenshots/01-overview-zh.png) | ![案件队列](docs/screenshots/02-case-queue-zh.png) |
 | **总览** —— 交易量、队列压力、哪些规则在干活、数据源健康度。 | **案件队列** —— 风险等级、原因族、SLA 时钟,以及紧挨着人工结论的 AI 建议。 |
-| ![案件详情](docs/screenshots/03-case-detail.png) | ![审计日志](docs/screenshots/04-audit-log.png) |
+| ![案件详情](docs/screenshots/03-case-detail-zh.png) | ![审计日志](docs/screenshots/04-audit-log-zh.png) |
 | **案件详情** —— 左边证据,右边仅供参考的简报,下面才是决策控件。 | **审计日志** —— 哈希链式,含 AI 与人工的分歧矩阵。 |
-| ![策略调参](docs/screenshots/07-policy-tuning.png) | ![追问](docs/screenshots/08-followup.png) |
+| ![策略调参](docs/screenshots/07-policy-tuning-zh.png) | ![追问](docs/screenshots/08-followup-zh.png) |
 | **策略调参** —— 把两个自动化阈值当作产品决策,附上你正在其上选点的「召回率 vs 复核率」曲线。 | **追问** —— 分析师的第二个问题,由更宽的上下文包回答;以及一次交出决策权的请求被拒绝。 |
 
 ---
