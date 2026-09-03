@@ -1,6 +1,8 @@
 # 演示视频旁白稿(中文)
 
-对应视频:[`docs/demo/demo-zh.mp4`](demo/demo-zh.mp4) · 字幕:[`docs/demo/demo-zh.srt`](demo/demo-zh.srt)
+成片(已配音):[`docs/demo/demo-zh-narrated.mp4`](demo/demo-zh-narrated.mp4)
+
+无声母版:[`docs/demo/demo-zh.mp4`](demo/demo-zh.mp4) · 字幕:[`docs/demo/demo-zh.srt`](demo/demo-zh.srt)
 
 片中出现的每一笔交易、商户、钱包和风险标签都是**合成数据**,由固定随机种子生成,没有接触过真实支付网络或客户。旁白第二句就是这件事,不要在配音时略过。
 
