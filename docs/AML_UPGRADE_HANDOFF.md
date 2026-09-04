@@ -32,7 +32,7 @@ Unchanged from before the upgrade. Nothing was added.
 - Python 3.10+ (developed on 3.13)
 - DuckDB — single-file warehouse at `data/riskops.duckdb`
 - pandas, scikit-learn (payments model only; the AML layer uses no model)
-- Streamlit + Plotly — ten pages in three navigation groups
+- Streamlit + Plotly — eleven pages in three navigation groups
 - pytest, ruff
 - playwright + ffmpeg — screenshots, GIF and demo video only
 
@@ -75,7 +75,8 @@ already existed and were correct:
 | `evaluate.py` | Six suites, three seeds, and the generated report. |
 
 Pages: `app/views/7_AML_Alert_Queue.py`, `8_Investigation_Workbench.py`,
-`9_AML_Operations.py`. The router in `app/Home.py` groups all ten pages.
+`9_AML_Operations.py`, `10_AML_Evaluation.py`. The router in `app/Home.py`
+groups all eleven pages.
 
 CLI: `python -m riskops aml build | status | eval`.
 
@@ -102,7 +103,7 @@ Kept deliberately small. Anything not listed here is untouched.
 
 | | Before the upgrade | After |
 | --- | --- | --- |
-| Tests | 304 | **451** |
+| Tests | 304 | **453** |
 | ruff | clean | clean |
 
 New files: `tests/test_aml_typologies.py` (67 — positive, negative and boundary

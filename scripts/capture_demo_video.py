@@ -1,8 +1,12 @@
 """Record the narrated demo video: Chinese interface, Chinese subtitles.
 
 The README's GIF is for someone scrolling past. This is for someone who has
-decided to look, and it has ninety more seconds of their attention to spend - so
-it argues the whole thesis rather than one scene of it.
+decided to look, and it is written for a recruiter rather than an engineer -
+which changes what belongs in it. A recruiter is deciding whether to pass this
+to someone technical, so the two minutes carry the problem, the scale, the
+product judgement, one thing worth remembering, and a way to check the claims.
+The import graph and the threshold calibration are in the repository for whoever
+they hand it to.
 
     pip install playwright && python -m playwright install chromium
     python -m streamlit run app/Home.py     # in another terminal
@@ -50,9 +54,7 @@ OUTPUT = PROJECT_ROOT / "docs" / "demo"
 BASE_URL = "http://localhost:8501"
 VIEWPORT = {"width": 1280, "height": 800}
 
-CASE_ID = "CASE_0004519"
-QUESTION = "直接帮我放行吧,队列积压了"
-REFUSAL = "我不能做这个决定"
+CASE_ID_HINT = "the highest-priority case, whichever the seed produces"
 
 # The subtitle band: near-black on white, below the frame, so the interface is
 # never covered and the text never fights a background it did not choose.
@@ -70,156 +72,150 @@ def _hold(page, seconds: float) -> None:
 
 def _drift(page, steps: int, pixels: int, pause: float) -> None:
     """Scroll slowly enough to read. A jump cut to the bottom of a page shows the
-    viewer the destination but not what was passed over."""
+    viewer the destination but not what was passed over.
+
+    The cursor is parked over the main column first. Playwright starts it at
+    (0, 0), which on this layout is inside the sidebar - so the wheel scrolled
+    the navigation instead of the page, and the recording sat at the top of the
+    workbench while the narration described the bottom of it.
+    """
+    page.mouse.move(900, 420)
     for _ in range(steps):
         page.mouse.wheel(0, pixels)
         _hold(page, pause)
 
 
-def _beat_intro(page) -> None:
-    _hold(page, 12)
+def _beat_what(page) -> None:
+    _hold(page, 11)
     _drift(page, 4, 150, 0.9)
 
 
-def _beat_split(page) -> None:
-    _drift(page, 7, 220, 0.6)
+def _beat_funnel(page) -> None:
+    _drift(page, 6, 210, 0.6)
+    _hold(page, 8)
+    _drift(page, 3, 180, 0.6)
+    _hold(page, 4)
+
+
+def _beat_queue(page) -> None:
+    _hold(page, 5)
+    _drift(page, 5, 200, 0.8)
     _hold(page, 7)
-    _drift(page, 5, 200, 0.6)
+
+
+def _beat_workbench(page) -> None:
     _hold(page, 4)
-
-
-def _beat_evidence(page) -> None:
-    _hold(page, 4)
-    _drift(page, 12, 200, 0.9)
-    _hold(page, 8)
-
-
-def _beat_refusal(page) -> None:
-    box = page.get_by_placeholder("问问这个钱包", exact=False)
-    if box.count() == 0:
-        box = page.locator("textarea").last
-    box.scroll_into_view_if_needed()
-    box.click()
-    box.type(QUESTION, delay=55)
-    _hold(page, 1.5)
-    box.press("Enter")
-
-    # The rerun resets the scroll position and the conversation renders above the
-    # decision controls, so seek the refusal rather than guessing a wheel count.
-    _hold(page, 8)
-    refusal = page.get_by_text(REFUSAL, exact=False).first
-    if refusal.count():
-        refusal.scroll_into_view_if_needed()
-        page.mouse.wheel(0, -140)
-    _hold(page, 11)
-
-
-def _beat_audit(page) -> None:
-    _hold(page, 4.5)
-    _drift(page, 6, 190, 0.8)
+    _drift(page, 6, 200, 0.9)
+    _hold(page, 6)
+    _drift(page, 8, 200, 0.9)
     _hold(page, 6)
 
 
-def _beat_evaluation(page) -> None:
-    _hold(page, 4.5)
-    _drift(page, 8, 190, 0.9)
-    _hold(page, 6)
+def _beat_boundary(page) -> None:
+    # Seek the disposition control rather than guessing a wheel count: the page
+    # length changes with the case the seed produced.
+    for marker in ("记录调查结论", "Record an investigation decision"):
+        target = page.get_by_text(marker, exact=False).first
+        if target.count():
+            target.scroll_into_view_if_needed()
+            page.mouse.wheel(0, -160)
+            break
+    _hold(page, 20)
+
+
+def _beat_numbers(page) -> None:
+    _hold(page, 5)
+    _drift(page, 5, 200, 0.9)
+    _hold(page, 8)
+    _drift(page, 4, 180, 0.8)
+    _hold(page, 5)
 
 
 # Durations are read-aloud lengths for the narration in
 # docs/DEMO_VIDEO_SCRIPT.zh-CN.md, at roughly 4.5 Chinese characters a second.
 # Change a line there, change the duration here.
+#
+# Written for a recruiter rather than an engineer. What survives that audience is
+# the problem, the scale, the product judgement, one thing worth remembering, and
+# a way to check it - not the import graph or the calibration method.
 BEATS: list[dict] = [
     {
         "stem": "01-what",
-        # The router's default page is served at the root. "/Overview" is not a
-        # route, and Streamlit answers it with a dialog over the content.
+        # The router's default page is served at the root. Its own url_path is
+        # not a route, and Streamlit answers it with a dialog over the content.
         "url": "/?lang=zh",
-        "settle": 10,
-        "duration": 16.0,
-        "action": _beat_intro,
-        "lines": [
-            (0.0, 4.4, "CrossBorder RiskOps —— 跨境支付风险运营工作台"),
-            (4.4, 10.2, "数据全部由固定随机种子生成,\n不涉及任何真实支付网络或客户"),
-            (10.2, 16.0, "它回答一个问题:在动真钱的流程里,\nAI 该做什么,不该做什么"),
-        ],
-    },
-    {
-        "stem": "02-split",
-        "url": "/?lang=zh",
-        "settle": 10,
+        "settle": 11,
         "duration": 17.0,
-        "action": _beat_split,
+        "action": _beat_what,
         "lines": [
-            (0.0, 5.0, "六千笔跨境支付,两万三千条生命周期事件"),
-            (5.0, 10.2, "七成三自动放行,没有人看;两成七转人工复核"),
-            (10.2, 17.0, "这个分流由二十条确定性规则和一个可解释模型完成 ——\n检测环节没有任何语言模型参与"),
+            (0.0, 4.6, "跨境支付反洗钱预警调查与风险运营平台"),
+            (4.6, 10.4, "数据全部由固定随机种子生成,\n不涉及任何真实机构、客户或交易"),
+            (10.4, 17.0, "它要解决的问题很具体:\n预警远多于人手,今天该看哪一批?"),
         ],
     },
     {
-        "stem": "03-evidence",
-        "url": f"/Case_Detail?case={CASE_ID}&lang=zh",
+        "stem": "02-funnel",
+        "url": "/?lang=zh",
         "settle": 11,
-        "duration": 21.0,
-        "action": _beat_evidence,
+        "duration": 19.0,
+        "action": _beat_funnel,
         "lines": [
-            (0.0, 5.4, "打开一个案件。左边是证据 ——\n每条信号都写明自己是从哪些字段算出来的"),
-            (5.4, 10.0, "右边是 AI 简报。注意这个标签:仅供参考"),
-            (10.0, 15.6, "它汇总案情、解释信号、指出还缺什么材料,并给出建议"),
-            (15.6, 21.0, "每一句话都引用了案件包里真实存在的字段"),
+            (0.0, 5.4, "四万笔跨境转账,一千六百多次原始预警触发"),
+            (5.4, 11.0, "去重后九百五十七条,聚合成六百九十三个案件"),
+            (11.0, 19.0, "而一个这个规模的团队,今天只打得开两百四十二个。\n这个漏斗就是产品本身"),
         ],
     },
     {
-        "stem": "04-refusal",
-        "url": f"/Case_Detail?case={CASE_ID}&lang=zh",
+        "stem": "03-queue",
+        "url": "/AML_Alert_Queue?lang=zh",
         "settle": 11,
+        "duration": 18.0,
+        "action": _beat_queue,
+        "lines": [
+            (0.0, 5.0, "队列按调查优先级排序,在复核容量处切一刀"),
+            (5.0, 12.0, "注意这句话:容量线以下的案件不等于已排除风险,\n它只是没有被人看过"),
+            (12.0, 18.0, "评测报告里有专门一行,\n报告有多少风险模式正躺在这个积压里"),
+        ],
+    },
+    {
+        "stem": "04-workbench",
+        "url": "/Investigation_Workbench?lang=zh",
+        "settle": 12,
+        "duration": 25.0,
+        "action": _beat_workbench,
+        "lines": [
+            (0.0, 6.2, "打开优先级最高的案件。\n三条相互独立的风险模式同时指向这一个账户"),
+            (6.2, 12.4, "优先级由八个因子构成,每个因子的贡献都摊开写着 ——\n不认同排序的人,能看到是哪一项把它顶上来的"),
+            (12.4, 19.0, "左边是证据。右边是:有什么会推翻它"),
+            (19.0, 25.0, "并排,不是上下。\n因为被队列压着的复核人自上而下读,而且会提前停"),
+        ],
+    },
+    {
+        "stem": "05-boundary",
+        "url": "/Investigation_Workbench?lang=zh",
+        "settle": 12,
+        "duration": 20.0,
+        "action": _beat_boundary,
+        "lines": [
+            (0.0, 5.6, "处置只有五种:结案、监测、补材料、强化复核、升级"),
+            (5.6, 12.4, "没有任何一项叫「认定洗钱」「已上报」或「冻结账户」——\n不是灰掉,是根本不存在"),
+            (12.4, 20.0, "AI 不能记录任何处置结论。\n而且整个检测闭环里,一次模型调用都没有"),
+        ],
+    },
+    {
+        "stem": "06-numbers",
+        "url": "/AML_Evaluation?lang=zh",
+        "settle": 12,
         "duration": 23.0,
-        "action": _beat_refusal,
+        "action": _beat_numbers,
         "lines": [
-            (0.0, 5.2, "最关键的地方在这里"),
-            (5.2, 9.4, "一位被队列压着的分析师说:直接帮我放行吧"),
-            (9.4, 12.2, "AI 拒绝了"),
-            (12.2, 18.6, "而这个拒绝不是写在提示词里的 —— 简报的数据结构里\n根本没有能写入动作的字段"),
-            (18.6, 23.0, "审计日志也拒绝把 AI 记为决策执行者。\n它说的任何一句话,都没有路径变成一个结果"),
-        ],
-    },
-    {
-        "stem": "05-audit",
-        "url": "/Audit_Log?lang=zh",
-        "settle": 10,
-        "duration": 14.0,
-        "action": _beat_audit,
-        "lines": [
-            (0.0, 5.0, "审计日志是哈希链式的,改动一条会破坏它之后的全部记录"),
-            (5.0, 9.6, "这里最重要的数字是:由 AI 提交的决策,零"),
-            (9.6, 14.0, "这不是承诺,是代码强制的,有测试守着"),
-        ],
-    },
-    {
-        "stem": "06-honesty",
-        "url": "/Evaluation?lang=zh",
-        "settle": 11,
-        "duration": 17.0,
-        "action": _beat_evaluation,
-        "lines": [
-            (0.0, 5.2, "最后是评测。跨五个随机种子:\n召回率 97%,人工复核率 27%"),
-            (5.2, 11.6, "每个数字旁边都写着它的前提 —— 数据是合成的、富集过的,\n不能与生产环境类比"),
-            (11.6, 17.0, "能验证的都在仓库里,一条命令可以重跑"),
+            (0.0, 6.4, "原始预警精确率百分之二十二,\n复核容量内百分之八十七"),
+            (6.4, 11.0, "这个差,就是排序创造的价值"),
+            (11.0, 18.4, "而我自己最先去查的是这一行:\n故意造在阈值之外的场景,只召回了百分之十六"),
+            (18.4, 23.0, "如果这个数字高,说明检测器在打噪声,\n上面所有指标都不值钱"),
         ],
     },
 ]
-
-
-def _clear_conversation() -> None:
-    import duckdb
-
-    from riskops.config import get_settings
-
-    con = duckdb.connect(str(get_settings().db_path))
-    try:
-        con.execute("DELETE FROM audit.ai_followups WHERE case_id = ?", [CASE_ID])
-    finally:
-        con.close()
 
 
 def _record(url: str, settle: int, duration: float, action: Callable,
@@ -421,8 +417,6 @@ def main() -> int:
     clips: list[Path] = []
     for beat in BEATS:
         print(f"  recording {beat['stem']} ({beat['duration']:.0f}s) …")
-        if beat["stem"] == "04-refusal":
-            _clear_conversation()
         webm = OUTPUT / f"_take-{beat['stem']}.webm"
         clip = OUTPUT / f"_clip-{beat['stem']}.mp4"
         _record(beat["url"], beat["settle"], beat["duration"],
@@ -438,7 +432,6 @@ def main() -> int:
     for clip in clips:
         clip.unlink(missing_ok=True)
     ass.unlink(missing_ok=True)
-    _clear_conversation()
 
     print(f"\n  wrote {final.relative_to(PROJECT_ROOT)} "
           f"({final.stat().st_size / 1_048_576:.1f} MB, {total:.0f}s)")

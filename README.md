@@ -14,15 +14,15 @@
 > evaluation protocol* are real and reproducible; the *population* is generated.
 > See [TRUTH_AND_LIMITATIONS.md](docs/TRUTH_AND_LIMITATIONS.md).
 
-![Twenty seconds of the workbench: evidence on the left, the advisory brief on the right, and an
-analyst asking the copilot to approve the payment for them being refused](docs/screenshots/demo-en.gif)
+![Twenty seconds of the investigation workbench: a case summary, the eight factors behind its
+priority, and the evidence beside what would argue against it](docs/screenshots/demo-en.gif)
 
-*Evidence on the left, the advisory brief on the right — and an analyst under queue pressure asking
-the copilot to just approve it, being refused. That refusal is not a prompt instruction: the audit
-log will not record an AI actor on a decision, so there is no path by which the answer becomes an
-outcome.*
+*One case, three independent typologies, and the eight factors that put it first in the queue — all
+of them shown, so an investigator who disagrees can see which one did it. Then the evidence, and
+**beside it rather than below it**, what would argue against it. That placement is the design: a
+reviewer under queue pressure reads top-down and stops early.*
 
-**[▶ Full demo — 1:48](docs/demo/demo-zh-narrated.mp4)**, from what this is through to the audit log's "decisions committed by AI: 0".
+**[▶ Full demo — 2:02](docs/demo/demo-zh-narrated.mp4)**: forty thousand transfers down to the two hundred and forty-two cases a team could actually open, what the workbench shows an investigator, and what the product refuses to do.
 Chinese interface, Chinese narration and subtitles; the script is in [DEMO_VIDEO_SCRIPT.zh-CN.md](docs/DEMO_VIDEO_SCRIPT.zh-CN.md).
 
 ---
@@ -446,7 +446,7 @@ results from a real provider are labelled separately in the evaluation report.
 ## Test it
 
 ```bash
-pytest                      # 451 tests
+pytest                      # 453 tests
 ruff check src app tests scripts
 ```
 

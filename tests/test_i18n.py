@@ -208,9 +208,12 @@ class TestCoverage:
         indirect |= set(CASE_STATES) | set(INVESTIGATOR_ROLES)
         # Priority factor labels: read back out of a stored string by
         # parse_contributions, so they reach t() as data.
+        from riskops.aml.evaluate import DATASET_CAVEAT
         from riskops.aml.priority import FACTOR_LABELS
 
         indirect |= set(FACTOR_LABELS.values())
+        # Reaches t() through the report dictionary the evaluation page reads.
+        indirect.add(DATASET_CAVEAT)
         # Column values rendered with `.map(t)`: enumerations from the data
         # dictionary, not page copy.
         indirect |= {

@@ -45,6 +45,18 @@ from .priority import PRIORITY_VERSION, prioritise
 from .typology import TYPOLOGIES, TYPOLOGY_VERSION
 
 EVAL_VERSION = "1.0.0"
+
+# Written into every report and rendered at the top of the evaluation page. A
+# module constant rather than an inline literal so the interface's translation
+# coverage test can import it: it reaches `t()` through the report dictionary,
+# which an AST walk over `t("literal")` calls cannot see.
+DATASET_CAVEAT = (
+    "Every figure below was produced by the generator in aml/world.py. No real "
+    "customer, account, institution or transfer is involved. The population is "
+    "deliberately enriched with injected typologies, so recall and precision are "
+    "both far higher than any real monitoring system would see, and neither "
+    "number transfers to production traffic."
+)
 DEFAULT_SEEDS = (20260815, 20260816, 20260817)
 
 
@@ -745,13 +757,7 @@ def run(
             "kind": "synthetic, seeded, enriched",
             "seeds": resolved_seeds,
             "transfers_per_seed": size,
-            "caveat": (
-                "Every figure below was produced by the generator in aml/world.py. No real "
-                "customer, account, institution or transfer is involved. The population is "
-                "deliberately enriched with injected typologies, so recall and precision are "
-                "both far higher than any real monitoring system would see, and neither "
-                "number transfers to production traffic."
-            ),
+            "caveat": DATASET_CAVEAT,
         },
         "headline": headline,
         "per_typology_recall": per_typology_recall,

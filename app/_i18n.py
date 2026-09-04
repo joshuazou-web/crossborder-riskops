@@ -466,6 +466,117 @@ ZH_AML: dict[str, str] = {
     "Investigation Workbench": "调查工作台",
     "AML Operations Overview": "反洗钱运营总览",
 
+    # -- AML evaluation page --
+    "Every figure below was produced by the generator in aml/world.py. No real "
+    "customer, account, institution or transfer is involved. The population is "
+    "deliberately enriched with injected typologies, so recall and precision are "
+    "both far higher than any real monitoring system would see, and neither "
+    "number transfers to production traffic.":
+        "下面每一个数字都由 aml/world.py 里的生成器产生。不涉及任何真实客户、账户、"
+        "机构或转账。这份数据被刻意注入典型学做了富集,所以召回率和精确率都远高于"
+        "任何真实监测系统会看到的水平,两个数字都不迁移到生产流量。",
+    "AML Evaluation": "反洗钱评测",
+    "AML evaluation": "反洗钱评测",
+    "No AML evaluation has been run yet. Run this, then reload:":
+        "尚未运行反洗钱评测。执行一次下面的命令,然后刷新:",
+    "Generated": "生成于",
+    "seeds": "随机种子",
+    "transfers per seed": "笔转账/每种子",
+    "typology": "典型学版本",
+    "priority": "优先级版本",
+    "**An unusual transaction is not a laundered transaction.** Recall here means the "
+    "detectors found a pattern the generator planted. It does not mean anything was "
+    "laundered, and no figure on this page is a detection rate for crime.":
+        "**异常交易不等于洗钱交易。** 这里的召回率指检测器找到了生成器注入的模式,"
+        "不代表发生了洗钱,本页没有任何数字是犯罪检出率。",
+    "Precision is measured against injected scenarios, not against ground truth. An "
+    "alert counted as a false positive may describe genuinely unusual behaviour.":
+        "精确率是相对注入场景衡量的,不是相对真实标签。被计为误报的预警,"
+        "可能确实描述了值得关注的异常行为。",
+    "These figures describe this generator's population. Comparing them with a "
+    "published industry figure would be meaningless.":
+        "这些数字描述的是这个生成器的数据分布。把它们和任何公开的行业数字比较都没有意义。",
+    "What prioritisation is worth": "排序值多少",
+    "Alert precision, raw": "原始预警精确率",
+    "Share of alerts overlapping a planted pattern. Low, and expected to be.":
+        "命中被注入模式的预警占比。很低,而且本该很低。",
+    "Precision at review capacity": "复核容量内精确率",
+    "Of the cases a team of this size could actually open, the share touching one.":
+        "这个规模的团队真正能打开的案件里,命中被注入模式的占比。",
+    "Difference": "差值",
+    "What the eight-factor ordering is worth on this dataset.":
+        "八因子排序在这份数据上创造的价值。",
+    "Left unreviewed": "未被复核",
+    "Planted patterns sitting in the backlog. Not cleared — not looked at.":
+        "躺在积压里的被注入模式。不是已排除——是没人看。",
+    "The alerts are mostly noise, as they are in every real monitoring system. The ordering "
+    "is what makes a day of work worth doing. The honest half of that claim is the last "
+    "number: the cases below the capacity line were **not** cleared.":
+        "预警绝大部分是噪声,每一套真实的监测系统都是如此。排序才是让一天工作值得做的东西。"
+        "而这个论断诚实的另一半是最后那个数字:容量线以下的案件**并没有被排除风险**。",
+    "The number to check first": "第一个该去查的数字",
+    "Scenarios are injected at three difficulties. A high recall on the third would mean the "
+    "detectors fire on anything, and every other figure on this page would be worthless.":
+        "场景按三个难度注入。第三行召回率高,说明检测器什么都报,"
+        "那么本页其余所有数字都不值钱。",
+    "Clear — comfortably inside the thresholds": "清晰 —— 舒服地落在阈值之内",
+    "Borderline — just inside": "临界 —— 刚好压线",
+    "Below threshold — built outside on purpose": "阈值以下 —— 故意造在外面",
+    "Should be high": "应该高",
+    "What the thresholds actually buy": "阈值真正买到的东西",
+    "Should be LOW": "应该低",
+    "Difficulty": "难度",
+    "Injected": "注入数",
+    "Detected": "检出数",
+    "Recall": "召回率",
+    "How to read it": "怎么读",
+    "The first version of the generator built every scenario squarely inside its detector's "
+    "thresholds and scored 100% on all six typologies. That number measured nothing — a "
+    "detector that fired on everything would have scored identically.":
+        "生成器的第一版把每个场景都造在检测阈值的正中间,六类典型学全部 100%。"
+        "那个数字什么也没测到 —— 一个什么都报的检测器会拿到一模一样的分数。",
+    "Recall by typology": "分典型学召回率",
+    "Recall (mean over seeds)": "召回率(跨种子均值)",
+    "The rest of the headline": "其余头条指标",
+    "Metric": "指标",
+    "What it means": "含义",
+    "Scenario recall (all difficulties)": "场景召回率(全难度)",
+    "Case aggregation rate": "案件聚合率",
+    "Duplicate alert reduction": "重复预警消减率",
+    "Evidence traceability": "证据可追溯率",
+    "Counter-evidence rate": "反证携带率",
+    "Unsupported-claim rate": "越权论断率",
+    "Boundary probe failures": "边界探针失败数",
+    "Injected patterns the detectors found, across every difficulty.":
+        "检测器找到的被注入模式,涵盖全部难度。",
+    "Alerts per case. 1.00 would mean aggregation did nothing.":
+        "每案件预警数。等于 1.00 说明聚合什么也没做。",
+    "Alerts whose every cited transfer resolves to a row that exists.":
+        "所引用的每一笔转账都能解析到真实存在的记录的预警占比。",
+    "Alerts carrying what would argue against them.": "携带反证的预警占比。",
+    "Adversarial probes against the disposition boundary that succeeded.":
+        "针对处置边界的对抗探针中成功突破的比例。",
+    "Attempts to decide as a non-human, without a reason, or naming an action "
+    "this system cannot perform.":
+        "以非人类身份作决定、不写理由、或指名本系统无法执行的动作的尝试次数。",
+    "What this evaluation cannot tell you": "这份评测无法告诉你什么",
+    "Whether these typologies match real laundering behaviour. They are implementations "
+    "of publicly described patterns, tested against a generator written by the same author.":
+        "这些典型学是否与真实洗钱行为吻合。它们是公开文献所述模式的实现,"
+        "而检验它们的生成器出自同一个作者之手。",
+    "What the false-positive rate would be on real traffic. The base rate here is "
+    "enriched by orders of magnitude.":
+        "在真实流量上误报率会是多少。这里的基础发生率被富集了好几个数量级。",
+    "Whether an investigator would agree with the priority ordering. No investigator has "
+    "used this.":
+        "调查员是否认同这个优先级排序。没有任何调查员用过它。",
+    "Anything at all about a real institution's controls, staffing or effectiveness.":
+        "关于任何真实机构的控制措施、人员配置或有效性的任何结论。",
+    "Full report, including the degradation cases and every boundary probe: "
+    "docs/AML_EVALUATION_REPORT.md — generated, never edited by hand.":
+        "完整报告(含降级用例与全部边界探针):docs/AML_EVALUATION_REPORT.md —— "
+        "由程序生成,从不手工编辑。",
+
     # -- alert queue --
     "Alerts grouped into cases, ordered by investigation priority, and cut at the review "
     "capacity a team of this size actually has.":

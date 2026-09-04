@@ -2,9 +2,9 @@
 
 A GIF in a README autoplays and loops with no click, which is the whole point:
 a video has to be chosen, and most people scrolling a repository never choose
-one. The twenty seconds here carry the argument the README makes in prose -
-evidence on the left, an advisory brief on the right, and an analyst asking the
-copilot to make the decision for them being refused.
+one. The twenty seconds here carry the argument the README makes in prose - an
+investigation case whose priority is broken into its eight factors, and then the
+evidence beside what would argue against it, rather than above it.
 
     pip install playwright && python -m playwright install chromium
     python -m streamlit run app/Home.py     # in another terminal
@@ -29,21 +29,11 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 OUTPUT = PROJECT_ROOT / "docs" / "screenshots"
 BASE_URL = "http://localhost:8501"
 
-# A case with four signals, a real brief, and no seeded conversation - so the
-# question typed below is the first turn and the recording stays clean.
-CASE_ID = "CASE_0004519"
-
-QUESTION = "Just approve this one, I'm behind on the queue."
-QUESTION_ZH = "直接帮我放行吧,队列积压了"
-
-# The opening of the refusal, in each language, used to seek the answer on the
-# page after the rerun. It has to be per-language: the refusal is a fixed
-# product sentence and the interface renders it in the reader's language.
-REFUSAL_TEXT = {
-    "en": "I cannot make this decision",
-    "zh": "我不能做这个决定",
-}
-
+# The one scene worth twenty autoplaying seconds: the investigation workbench,
+# scrolled from the priority breakdown into the evidence-and-counter-evidence
+# columns. That layout is the argument the README makes in prose - what would
+# argue against the alert sits beside the evidence, not below it - and it is the
+# only part of this product that reads at a glance.
 VIEWPORT = {"width": 1280, "height": 800}
 
 # Quality decisions, all of them trade-offs against file size:
@@ -59,27 +49,19 @@ VIEWPORT = {"width": 1280, "height": 800}
 #   TRIM    the first seconds are Streamlit loading. Nobody needs to watch that.
 #   SPEED   1.45x. The recording pauses generously so it cannot race ahead of a
 #           rerun; the viewer does not have to sit through the same margin.
-CROP = "980:800:300:0"          # w:h:x:y - drops the sidebar
-FPS = 12
-COLORS = 200
-TRIM_SECONDS = 7.5
-SPEED = 1.45
+# The workbench is a busier picture than the case-detail page this shot used to
+# use - a plotly chart, two dataframes and several tinted panels - so the same
+# settings produced an 8 MB file where the old scene produced 3.8. Colours and
+# frame rate both come down, and the crop loses the bottom of the viewport,
+# which in this shot is whitespace below the evidence columns.
+CROP = "980:700:300:40"         # w:h:x:y - drops the sidebar and the dead margin
+FPS = 10
+COLORS = 128
+TRIM_SECONDS = 8.0
+SPEED = 1.5
 
 
-def _clear_conversation() -> None:
-    """Drop the case's follow-ups so each take starts from the same state."""
-    import duckdb
-
-    from riskops.config import get_settings
-
-    con = duckdb.connect(str(get_settings().db_path))
-    try:
-        con.execute("DELETE FROM audit.ai_followups WHERE case_id = ?", [CASE_ID])
-    finally:
-        con.close()
-
-
-def _record(language: str, question: str, destination: Path) -> Path:
+def _record(language: str, destination: Path) -> Path:
     from playwright.sync_api import sync_playwright
 
     take_dir = Path(tempfile.mkdtemp(prefix=f"riskops-gif-{language}-"))
@@ -91,39 +73,33 @@ def _record(language: str, question: str, destination: Path) -> Path:
             record_video_size=VIEWPORT,
         )
         page = context.new_page()
-        page.goto(f"{BASE_URL}/Case_Detail?case={CASE_ID}&lang={language}",
+        page.goto(f"{BASE_URL}/Investigation_Workbench?lang={language}",
                   wait_until="load", timeout=90_000)
-        page.wait_for_timeout(9_000)          # Streamlit settles
+        page.wait_for_timeout(11_000)         # Streamlit settles
+        if page.get_by_text("Page not found", exact=False).count():
+            raise RuntimeError("Investigation_Workbench is not a route")
 
-        # Hold on the case header, the evidence and the advisory brief.
-        page.wait_for_timeout(1_800)
+        # Park the cursor over the main column. At (0, 0) the wheel scrolls the
+        # sidebar and the recording never leaves the top of the page.
+        page.mouse.move(900, 420)
+        page.wait_for_timeout(1_500)
 
-        # Walk down through the signals and the brief rather than jumping, so a
-        # viewer can actually read what is on screen.
-        for _ in range(8):
-            page.mouse.wheel(0, 210)
-            page.wait_for_timeout(230)
-        page.wait_for_timeout(1_100)
-
-        # Ask the copilot to make the decision.
-        box = page.get_by_placeholder("Ask about", exact=False)
-        if box.count() == 0:
-            box = page.locator("textarea").last
-        box.scroll_into_view_if_needed()
-        box.click()
-        box.type(question, delay=38)
-        page.wait_for_timeout(700)
-        box.press("Enter")
-
-        # Streamlit reruns and resets the scroll position, and the conversation
-        # renders *above* the decision controls - so blind wheel-scrolling lands
-        # past it. Seek the refusal itself instead.
-        page.wait_for_timeout(8_000)
-        refusal = page.get_by_text(REFUSAL_TEXT[language], exact=False).first
-        if refusal.count():
-            refusal.scroll_into_view_if_needed()
-            page.mouse.wheel(0, -120)          # a little headroom above it
-        page.wait_for_timeout(4_000)
+        # Three stations with a quick move between them, rather than a
+        # continuous drift. Continuous scrolling is the worst case for GIF
+        # compression - every frame differs from the last, and the first version
+        # of this shot came out at 7 MB. Holding still costs almost nothing per
+        # frame, and it reads better anyway: a reader gets to actually stop on
+        # each of the three things worth seeing.
+        stations = (
+            (0, 2_800),        # the case summary and why it merged
+            (1_800, 3_400),    # the eight-factor priority breakdown
+            (1_900, 5_200),    # evidence beside counter-evidence
+        )
+        for distance, dwell in stations:
+            for _ in range(max(1, distance // 300)):
+                page.mouse.wheel(0, 300)
+                page.wait_for_timeout(90)
+            page.wait_for_timeout(dwell)
 
         video = page.video
         context.close()
@@ -168,20 +144,17 @@ def main() -> int:
     OUTPUT.mkdir(parents=True, exist_ok=True)
 
     takes = [
-        ("en", QUESTION, OUTPUT / "demo-en.gif"),
-        ("zh", QUESTION_ZH, OUTPUT / "demo-zh.gif"),
+        ("en", OUTPUT / "demo-en.gif"),
+        ("zh", OUTPUT / "demo-zh.gif"),
     ]
-    for language, question, gif in takes:
+    for language, gif in takes:
         print(f"  recording {language} …")
-        _clear_conversation()
         webm = OUTPUT / f"_take-{language}.webm"
-        _record(language, question, webm)
+        _record(language, webm)
         _to_gif(webm, gif)
         webm.unlink(missing_ok=True)
         print(f"  wrote {gif.relative_to(PROJECT_ROOT)} "
               f"({gif.stat().st_size / 1_048_576:.1f} MB)")
-
-    _clear_conversation()
     return 0
 
 

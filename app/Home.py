@@ -48,6 +48,7 @@ PAGE_GROUPS: dict[str, list[tuple[str, str, str, str]]] = {
         ("views/7_AML_Alert_Queue.py", "AML Alert Queue", "🚩", "AML_Alert_Queue"),
         ("views/8_Investigation_Workbench.py", "Investigation Workbench", "🔬",
          "Investigation_Workbench"),
+        ("views/10_AML_Evaluation.py", "AML Evaluation", "📏", "AML_Evaluation"),
     ],
     "Payment risk operations": [
         ("views/0_Overview.py", "Overview", "📊", "Overview"),
