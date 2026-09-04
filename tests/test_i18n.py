@@ -89,19 +89,33 @@ def _navigation_titles() -> list[str]:
     place a half-translated interface reads as broken rather than pragmatic.
     """
     tree = ast.parse((APP / "Home.py").read_text(encoding="utf-8"))
+    titles: list[str] = []
     for node in ast.walk(tree):
-        if not (isinstance(node, ast.Assign) and isinstance(node.value, ast.List)):
+        # PAGE_GROUPS: {group name: [(module, title, icon, url), ...]}. The group
+        # names are sidebar headings and need translating too. It carries a type
+        # annotation, so it parses as AnnAssign rather than Assign - matching
+        # only Assign silently found nothing and made this whole check vacuous.
+        if isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        elif isinstance(node, ast.Assign):
+            targets = list(node.targets)
+        else:
             continue
-        if not any(getattr(target, "id", "") == "PAGES" for target in node.targets):
+        if not isinstance(node.value, ast.Dict):
             continue
-        titles = []
-        for entry in node.value.elts:
-            if isinstance(entry, ast.Tuple) and len(entry.elts) >= 2:
-                title = entry.elts[1]
-                if isinstance(title, ast.Constant) and isinstance(title.value, str):
-                    titles.append(title.value)
-        return titles
-    return []
+        if not any(getattr(target, "id", "") == "PAGE_GROUPS" for target in targets):
+            continue
+        for key, value in zip(node.value.keys, node.value.values, strict=True):
+            if isinstance(key, ast.Constant) and isinstance(key.value, str):
+                titles.append(key.value)
+            if not isinstance(value, ast.List):
+                continue
+            for entry in value.elts:
+                if isinstance(entry, ast.Tuple) and len(entry.elts) >= 2:
+                    title = entry.elts[1]
+                    if isinstance(title, ast.Constant) and isinstance(title.value, str):
+                        titles.append(title.value)
+    return titles
 
 
 NAVIGATION_TITLES = _navigation_titles()
@@ -111,10 +125,16 @@ class TestNavigation:
     def test_the_router_declares_every_page(self):
         # One view file, one navigation entry. A view nobody can navigate to is
         # dead, and an entry with no view behind it is a broken link.
+        import sys
+
+        sys.path.insert(0, str(APP))
         view_files = sorted((APP / "views").glob("*.py"))
-        assert len(NAVIGATION_TITLES) == len(view_files), (
-            f"{len(NAVIGATION_TITLES)} navigation entries against "
-            f"{len(view_files)} view files"
+        # NAVIGATION_TITLES carries the group headings as well as the pages, so
+        # count the page entries from the router's own flattened list.
+        text = (APP / "Home.py").read_text(encoding="utf-8")
+        entries = text.count('("views/')
+        assert entries == len(view_files), (
+            f"{entries} navigation entries against {len(view_files)} view files"
         )
 
     @pytest.mark.parametrize("title", NAVIGATION_TITLES)
@@ -159,19 +179,44 @@ class TestCoverage:
         used = {text for arguments in ALL_ARGUMENTS.values() for text in arguments}
         # Keys used through `format_func=t` on option lists rather than a direct
         # call are legitimate and cannot be seen by the AST walk.
+        # Strings a page renders through a variable - `t(typology.title)`,
+        # `.map(t)` over a column, `format_func=t` on an option list - are
+        # invisible to an AST walk over `t("literal")` calls. Rather than keep a
+        # hand-written exemption list that rots, they are derived from the
+        # tables they actually come from.
+        from riskops.aml.aggregate import CASE_STATES
+        from riskops.aml.investigation import DISPOSITIONS, INVESTIGATOR_ROLES
+        from riskops.aml.typology import TYPOLOGIES
+
         indirect = {
             # Passed through `format_func=t` on an option list rather than called
             # directly, so the AST walk cannot see them.
             "Open only", "All cases", "Breached SLA", "Appealed",
             # Used inside _i18n.py itself, which is not a page.
             "Language",
-            # Navigation titles, passed to `st.Page` in the router rather than
-            # rendered directly by a page.
-            "Overview", "Transaction Explorer", "Case Queue", "Case Detail",
-            "Audit Log", "Evaluation", "Policy Tuning",
             # The delegation refusal reaches `t()` as `turn.answer`, a variable,
             # so the AST walk cannot see it. Asserted by name below instead.
             DELEGATION_REFUSAL,
+        }
+        indirect |= set(NAVIGATION_TITLES)
+        for typology in TYPOLOGIES:
+            indirect |= {typology.title, typology.question,
+                         *typology.counter_evidence_hints}
+        for disposition in DISPOSITIONS:
+            indirect |= {disposition.key, disposition.title,
+                         disposition.description, disposition.next_state}
+        indirect |= set(CASE_STATES) | set(INVESTIGATOR_ROLES)
+        # Priority factor labels: read back out of a stored string by
+        # parse_contributions, so they reach t() as data.
+        from riskops.aml.priority import FACTOR_LABELS
+
+        indirect |= set(FACTOR_LABELS.values())
+        # Column values rendered with `.map(t)`: enumerations from the data
+        # dictionary, not page copy.
+        indirect |= {
+            "individual", "business", "personal", "verified", "unverified",
+            "not_required", "complete", "partial", "missing",
+            "critical", "high", "medium", "low",
         }
         stale = sorted(set(ZH) - used - indirect)
         assert not stale, (
@@ -263,3 +308,73 @@ class TestReasonTranslation:
         assert _i18n.translate_reason("not a reason anyone translated") == (
             "not a reason anyone translated"
         )
+
+
+class TestPriorityFactorLabels:
+    """The eight priority factors reach `t()` as data, not as literals.
+
+    They are read back out of a stored string by `parse_contributions`, so the
+    AST coverage walk cannot see them. Left unchecked, seven of the eight sat
+    untranslated on the Chinese workbench while the eighth happened to already
+    be in the table - which is exactly the half-finished look this suite exists
+    to prevent.
+    """
+
+    def test_every_factor_label_is_translated(self) -> None:
+        from riskops.aml.priority import FACTOR_LABELS
+
+        missing = sorted(label for label in FACTOR_LABELS.values() if label not in ZH)
+        assert not missing, f"priority factor labels with no Chinese: {missing}"
+
+    def test_every_weighted_factor_has_a_label(self) -> None:
+        from riskops.aml.priority import FACTOR_LABELS, WEIGHTS
+
+        assert set(WEIGHTS) == set(FACTOR_LABELS)
+
+
+class TestChineseMarkdown:
+    """Bold has to actually render, which needs a boundary CJK does not give it.
+
+    `**加粗**它` renders the asterisks literally: markdown wants whitespace or
+    punctuation after a closing delimiter, and a Chinese character is neither.
+    Four strings shipped this way before the check existed, including the
+    capacity-line notice - the one sentence on the alert queue that most needed
+    emphasis.
+    """
+
+    @staticmethod
+    def _unrendered_bold(value: str) -> list[str]:
+        """Bold runs whose closing delimiter is followed by a CJK ideograph.
+
+        Delimiters are paired left to right rather than matched with a regex. A
+        pattern like ``\\*\\*[^*]+\\*\\*`` cannot tell the end of one bold run from
+        the start of the next, so on a string containing two of them it matches
+        the gap between and reports a problem that is not there - which is
+        exactly what happened when this check was first written, and it took a
+        correct translation with it.
+
+        A full-width colon, comma or full stop is Unicode punctuation and closes
+        a run correctly. Only an ideograph does not.
+        """
+        positions = [i for i in range(len(value) - 1) if value[i:i + 2] == "**"]
+        broken = []
+        for opening, closing in zip(positions[::2], positions[1::2], strict=False):
+            after = value[closing + 2: closing + 3]
+            if after and "\u4e00" <= after <= "\u9fff":
+                broken.append(value[opening:closing + 3])
+        return broken
+
+    def test_bold_is_followed_by_a_boundary(self) -> None:
+        broken = [
+            run for value in ZH.values() for run in self._unrendered_bold(value)
+        ]
+        assert not broken, (
+            "these bold runs are followed directly by a Chinese character, so markdown "
+            f"renders the asterisks instead: {broken}"
+        )
+
+    def test_bold_delimiters_are_balanced(self) -> None:
+        unbalanced = [
+            value[:60] for value in ZH.values() if value.count("**") % 2
+        ]
+        assert not unbalanced, f"odd number of ** in: {unbalanced}"

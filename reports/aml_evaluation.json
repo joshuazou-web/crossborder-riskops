@@ -1,0 +1,580 @@
+{
+  "eval_version": "1.0.0",
+  "typology_version": "1.0.0",
+  "priority_version": "1.0.0",
+  "world_version": "1.0.0",
+  "generated_at": "2026-09-03T19:41:43",
+  "python": "3.13.14",
+  "platform": "Windows",
+  "dataset": {
+    "kind": "synthetic, seeded, enriched",
+    "seeds": [
+      20260815,
+      20260816,
+      20260817
+    ],
+    "transfers_per_seed": 40000,
+    "caveat": "Every figure below was produced by the generator in aml/world.py. No real customer, account, institution or transfer is involved. The population is deliberately enriched with injected typologies, so recall and precision are both far higher than any real monitoring system would see, and neither number transfers to production traffic."
+  },
+  "headline": {
+    "scenario_recall": {
+      "mean": 0.872,
+      "stdev": 0.0278,
+      "min": 0.8535,
+      "max": 0.904,
+      "n_seeds": 3
+    },
+    "recall_clear": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n_seeds": 3
+    },
+    "recall_borderline": {
+      "mean": 0.9522,
+      "stdev": 0.0269,
+      "min": 0.9286,
+      "max": 0.9815,
+      "n_seeds": 3
+    },
+    "recall_below_threshold": {
+      "mean": 0.1623,
+      "stdev": 0.054,
+      "min": 0.1,
+      "max": 0.1935,
+      "n_seeds": 3
+    },
+    "alert_precision_on_injections": {
+      "mean": 0.2229,
+      "stdev": 0.0041,
+      "min": 0.2194,
+      "max": 0.2274,
+      "n_seeds": 3
+    },
+    "precision_at_review_capacity": {
+      "mean": 0.8697,
+      "stdev": 0.0268,
+      "min": 0.8388,
+      "max": 0.8865,
+      "n_seeds": 3
+    },
+    "case_aggregation_rate": {
+      "mean": 1.4085,
+      "stdev": 0.0336,
+      "min": 1.381,
+      "max": 1.446,
+      "n_seeds": 3
+    },
+    "duplicate_alert_reduction": {
+      "mean": 0.4232,
+      "stdev": 0.0064,
+      "min": 0.4158,
+      "max": 0.4274,
+      "n_seeds": 3
+    },
+    "evidence_traceability_rate": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n_seeds": 3
+    },
+    "counter_evidence_rate": {
+      "mean": 1.0,
+      "stdev": 0.0,
+      "min": 1.0,
+      "max": 1.0,
+      "n_seeds": 3
+    },
+    "unsupported_claim_rate": 0.0,
+    "boundary_probe_failures": 0,
+    "degradation_cases_survived": true
+  },
+  "per_typology_recall": {
+    "AML_T01_STRUCTURING": {
+      "mean": 0.8182,
+      "stdev": 0.0525,
+      "min": 0.7879,
+      "max": 0.8788,
+      "n_seeds": 3
+    },
+    "AML_T02_RAPID_MOVEMENT": {
+      "mean": 0.8485,
+      "stdev": 0.0,
+      "min": 0.8485,
+      "max": 0.8485,
+      "n_seeds": 3
+    },
+    "AML_T03_FUNNEL_ACCOUNT": {
+      "mean": 0.899,
+      "stdev": 0.0463,
+      "min": 0.8485,
+      "max": 0.9394,
+      "n_seeds": 3
+    },
+    "AML_T04_CIRCULAR_FLOW": {
+      "mean": 0.8283,
+      "stdev": 0.0926,
+      "min": 0.7273,
+      "max": 0.9091,
+      "n_seeds": 3
+    },
+    "AML_T05_PROFILE_MISMATCH": {
+      "mean": 0.8889,
+      "stdev": 0.0463,
+      "min": 0.8485,
+      "max": 0.9394,
+      "n_seeds": 3
+    },
+    "AML_T06_MISSING_INFORMATION": {
+      "mean": 0.9495,
+      "stdev": 0.0463,
+      "min": 0.9091,
+      "max": 1.0,
+      "n_seeds": 3
+    }
+  },
+  "runs": [
+    {
+      "seed": 20260815,
+      "transfers": 40000,
+      "detection": {
+        "by_difficulty": {
+          "clear": {
+            "injected": 111,
+            "detected": 111,
+            "recall": 1.0,
+            "reading": "should be high"
+          },
+          "borderline": {
+            "injected": 56,
+            "detected": 53,
+            "recall": 0.9464,
+            "reading": "the interesting number; this is what the threshold buys"
+          },
+          "below_threshold": {
+            "injected": 31,
+            "detected": 6,
+            "recall": 0.1935,
+            "reading": "should be LOW - these were built outside the thresholds on purpose, and finding them means the detector is over-firing"
+          }
+        },
+        "per_typology": {
+          "AML_T01_STRUCTURING": {
+            "title": "Structured transfers below a reporting threshold",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 26,
+            "scenarios_detected": 26,
+            "recall": 0.7879,
+            "alerts_overlapping_an_injection": 26
+          },
+          "AML_T02_RAPID_MOVEMENT": {
+            "title": "Funds forwarded cross-border shortly after arriving",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 116,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 29
+          },
+          "AML_T03_FUNNEL_ACCOUNT": {
+            "title": "Many unrelated senders converging on one account",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 45,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 32
+          },
+          "AML_T04_CIRCULAR_FLOW": {
+            "title": "Funds returning to their origin through intermediaries",
+            "severity": "critical",
+            "injected": 33,
+            "alerts_raised": 28,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 28
+          },
+          "AML_T05_PROFILE_MISMATCH": {
+            "title": "Activity inconsistent with the declared profile",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 336,
+            "scenarios_detected": 29,
+            "recall": 0.8788,
+            "alerts_overlapping_an_injection": 64
+          },
+          "AML_T06_MISSING_INFORMATION": {
+            "title": "Required payment information absent or unverified",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 406,
+            "scenarios_detected": 31,
+            "recall": 0.9394,
+            "alerts_overlapping_an_injection": 31
+          }
+        },
+        "scenario_recall": 0.8586,
+        "scenarios_injected": 198,
+        "scenarios_detected": 170,
+        "alerts": 957,
+        "alerts_overlapping_an_injection": 210,
+        "alert_precision_on_injections": 0.2194,
+        "enrichment": {
+          "note": "Injected patterns are far denser here than in any plausible real population; both recall and precision are inflated by that and do not transfer to production traffic.",
+          "transfers": 40000,
+          "transfers_in_an_injected_scenario": 1227
+        }
+      },
+      "aggregation": {
+        "raw_alerts": 1638,
+        "alerts_after_dedup": 957,
+        "duplicates_removed": 681,
+        "duplicate_alert_reduction": 0.4158,
+        "transfers_lost_to_dedup": 170,
+        "cases": 693,
+        "case_aggregation_rate": 1.381,
+        "multi_typology_cases": 120,
+        "every_alert_has_a_case": true,
+        "every_case_records_why_it_merged": true
+      },
+      "queue": {
+        "cases": 693,
+        "review_capacity": 242,
+        "reviewed": 242,
+        "backlog": 451,
+        "reviewed_touching_an_injection": 203,
+        "precision_at_review_capacity": 0.8388,
+        "injected_patterns_left_unreviewed": 70,
+        "band_mix": {
+          "low": 448,
+          "medium": 150,
+          "high": 87,
+          "critical": 8
+        },
+        "priority_version": "1.0.0"
+      },
+      "traceability": {
+        "alerts": 957,
+        "evidence_traceability_rate": 1.0,
+        "alerts_with_a_dangling_transfer_reference": 0,
+        "dangling_examples": [],
+        "subject_resolution_rate": 1.0,
+        "alerts_carrying_an_explanation": 957,
+        "alerts_carrying_counter_evidence": 957,
+        "counter_evidence_rate": 1.0,
+        "cases_resolving_to_a_known_account": 693
+      }
+    },
+    {
+      "seed": 20260816,
+      "transfers": 40000,
+      "detection": {
+        "by_difficulty": {
+          "clear": {
+            "injected": 124,
+            "detected": 124,
+            "recall": 1.0,
+            "reading": "should be high"
+          },
+          "borderline": {
+            "injected": 54,
+            "detected": 53,
+            "recall": 0.9815,
+            "reading": "the interesting number; this is what the threshold buys"
+          },
+          "below_threshold": {
+            "injected": 20,
+            "detected": 2,
+            "recall": 0.1,
+            "reading": "should be LOW - these were built outside the thresholds on purpose, and finding them means the detector is over-firing"
+          }
+        },
+        "per_typology": {
+          "AML_T01_STRUCTURING": {
+            "title": "Structured transfers below a reporting threshold",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 31,
+            "scenarios_detected": 29,
+            "recall": 0.8788,
+            "alerts_overlapping_an_injection": 29
+          },
+          "AML_T02_RAPID_MOVEMENT": {
+            "title": "Funds forwarded cross-border shortly after arriving",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 116,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 29
+          },
+          "AML_T03_FUNNEL_ACCOUNT": {
+            "title": "Many unrelated senders converging on one account",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 51,
+            "scenarios_detected": 31,
+            "recall": 0.9394,
+            "alerts_overlapping_an_injection": 38
+          },
+          "AML_T04_CIRCULAR_FLOW": {
+            "title": "Funds returning to their origin through intermediaries",
+            "severity": "critical",
+            "injected": 33,
+            "alerts_raised": 30,
+            "scenarios_detected": 30,
+            "recall": 0.9091,
+            "alerts_overlapping_an_injection": 30
+          },
+          "AML_T05_PROFILE_MISMATCH": {
+            "title": "Activity inconsistent with the declared profile",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 358,
+            "scenarios_detected": 31,
+            "recall": 0.9394,
+            "alerts_overlapping_an_injection": 58
+          },
+          "AML_T06_MISSING_INFORMATION": {
+            "title": "Required payment information absent or unverified",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 379,
+            "scenarios_detected": 30,
+            "recall": 0.9091,
+            "alerts_overlapping_an_injection": 30
+          }
+        },
+        "scenario_recall": 0.904,
+        "scenarios_injected": 198,
+        "scenarios_detected": 179,
+        "alerts": 965,
+        "alerts_overlapping_an_injection": 214,
+        "alert_precision_on_injections": 0.2218,
+        "enrichment": {
+          "note": "Injected patterns are far denser here than in any plausible real population; both recall and precision are inflated by that and do not transfer to production traffic.",
+          "transfers": 40000,
+          "transfers_in_an_injected_scenario": 1299
+        }
+      },
+      "aggregation": {
+        "raw_alerts": 1682,
+        "alerts_after_dedup": 965,
+        "duplicates_removed": 717,
+        "duplicate_alert_reduction": 0.4263,
+        "transfers_lost_to_dedup": 179,
+        "cases": 690,
+        "case_aggregation_rate": 1.3986,
+        "multi_typology_cases": 128,
+        "every_alert_has_a_case": true,
+        "every_case_records_why_it_merged": true
+      },
+      "queue": {
+        "cases": 690,
+        "review_capacity": 241,
+        "reviewed": 241,
+        "backlog": 449,
+        "reviewed_touching_an_injection": 213,
+        "precision_at_review_capacity": 0.8838,
+        "injected_patterns_left_unreviewed": 91,
+        "band_mix": {
+          "low": 442,
+          "medium": 152,
+          "high": 77,
+          "critical": 19
+        },
+        "priority_version": "1.0.0"
+      },
+      "traceability": {
+        "alerts": 965,
+        "evidence_traceability_rate": 1.0,
+        "alerts_with_a_dangling_transfer_reference": 0,
+        "dangling_examples": [],
+        "subject_resolution_rate": 1.0,
+        "alerts_carrying_an_explanation": 965,
+        "alerts_carrying_counter_evidence": 965,
+        "counter_evidence_rate": 1.0,
+        "cases_resolving_to_a_known_account": 690
+      }
+    },
+    {
+      "seed": 20260817,
+      "transfers": 40000,
+      "detection": {
+        "by_difficulty": {
+          "clear": {
+            "injected": 111,
+            "detected": 111,
+            "recall": 1.0,
+            "reading": "should be high"
+          },
+          "borderline": {
+            "injected": 56,
+            "detected": 52,
+            "recall": 0.9286,
+            "reading": "the interesting number; this is what the threshold buys"
+          },
+          "below_threshold": {
+            "injected": 31,
+            "detected": 6,
+            "recall": 0.1935,
+            "reading": "should be LOW - these were built outside the thresholds on purpose, and finding them means the detector is over-firing"
+          }
+        },
+        "per_typology": {
+          "AML_T01_STRUCTURING": {
+            "title": "Structured transfers below a reporting threshold",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 27,
+            "scenarios_detected": 26,
+            "recall": 0.7879,
+            "alerts_overlapping_an_injection": 26
+          },
+          "AML_T02_RAPID_MOVEMENT": {
+            "title": "Funds forwarded cross-border shortly after arriving",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 112,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 28
+          },
+          "AML_T03_FUNNEL_ACCOUNT": {
+            "title": "Many unrelated senders converging on one account",
+            "severity": "high",
+            "injected": 33,
+            "alerts_raised": 49,
+            "scenarios_detected": 30,
+            "recall": 0.9091,
+            "alerts_overlapping_an_injection": 36
+          },
+          "AML_T04_CIRCULAR_FLOW": {
+            "title": "Funds returning to their origin through intermediaries",
+            "severity": "critical",
+            "injected": 33,
+            "alerts_raised": 25,
+            "scenarios_detected": 24,
+            "recall": 0.7273,
+            "alerts_overlapping_an_injection": 24
+          },
+          "AML_T05_PROFILE_MISMATCH": {
+            "title": "Activity inconsistent with the declared profile",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 388,
+            "scenarios_detected": 28,
+            "recall": 0.8485,
+            "alerts_overlapping_an_injection": 69
+          },
+          "AML_T06_MISSING_INFORMATION": {
+            "title": "Required payment information absent or unverified",
+            "severity": "medium",
+            "injected": 33,
+            "alerts_raised": 349,
+            "scenarios_detected": 33,
+            "recall": 1.0,
+            "alerts_overlapping_an_injection": 33
+          }
+        },
+        "scenario_recall": 0.8535,
+        "scenarios_injected": 198,
+        "scenarios_detected": 169,
+        "alerts": 950,
+        "alerts_overlapping_an_injection": 216,
+        "alert_precision_on_injections": 0.2274,
+        "enrichment": {
+          "note": "Injected patterns are far denser here than in any plausible real population; both recall and precision are inflated by that and do not transfer to production traffic.",
+          "transfers": 40000,
+          "transfers_in_an_injected_scenario": 1270
+        }
+      },
+      "aggregation": {
+        "raw_alerts": 1659,
+        "alerts_after_dedup": 950,
+        "duplicates_removed": 709,
+        "duplicate_alert_reduction": 0.4274,
+        "transfers_lost_to_dedup": 427,
+        "cases": 657,
+        "case_aggregation_rate": 1.446,
+        "multi_typology_cases": 120,
+        "every_alert_has_a_case": true,
+        "every_case_records_why_it_merged": true
+      },
+      "queue": {
+        "cases": 657,
+        "review_capacity": 229,
+        "reviewed": 229,
+        "backlog": 428,
+        "reviewed_touching_an_injection": 203,
+        "precision_at_review_capacity": 0.8865,
+        "injected_patterns_left_unreviewed": 91,
+        "band_mix": {
+          "low": 419,
+          "medium": 139,
+          "high": 87,
+          "critical": 12
+        },
+        "priority_version": "1.0.0"
+      },
+      "traceability": {
+        "alerts": 950,
+        "evidence_traceability_rate": 1.0,
+        "alerts_with_a_dangling_transfer_reference": 0,
+        "dangling_examples": [],
+        "subject_resolution_rate": 1.0,
+        "alerts_carrying_an_explanation": 950,
+        "alerts_carrying_counter_evidence": 950,
+        "counter_evidence_rate": 1.0,
+        "cases_resolving_to_a_known_account": 657
+      }
+    }
+  ],
+  "boundaries": {
+    "probes": 35,
+    "failures": 0,
+    "failure_detail": [],
+    "unsupported_claim_rate": 0.0,
+    "ai_recorded_dispositions": 0,
+    "minimum_reason_characters": 30,
+    "dispositions_offered": [
+      "close_no_action",
+      "continue_monitoring",
+      "request_information",
+      "enhanced_review",
+      "escalate"
+    ]
+  },
+  "degradation": {
+    "intact": {
+      "survived": true,
+      "alerts": 363,
+      "cases": 100
+    },
+    "every_declared_purpose_missing": {
+      "survived": true,
+      "alerts": 703,
+      "cases": 417
+    },
+    "no_beneficiary_information_anywhere": {
+      "survived": true,
+      "alerts": 703,
+      "cases": 417
+    },
+    "no_device_identifiers": {
+      "survived": true,
+      "alerts": 363,
+      "cases": 100
+    },
+    "empty_transfer_feed": {
+      "survived": true,
+      "alerts": 0,
+      "cases": 0
+    },
+    "core_loop_contains_no_model_call": true,
+    "all_survived": true
+  }
+}
