@@ -4,7 +4,7 @@
 
 **The rules find the pattern. The copilot organises the evidence. A person makes the call.**
 
-In the project's synthetic operating scenario, it is 02:14. Nine hundred accounts have alerted.
+In the project's synthetic operating scenario, it is 02:14. Nine hundred accounts have generated alerts.
 A six-person investigation team can open sixty of them today. One payment has nine risk signals,
 the queue is still growing, and a tired analyst asks the copilot:
 
