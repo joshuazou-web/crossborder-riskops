@@ -249,6 +249,42 @@ CrossBorder RiskOps 想验证的就是这件事：
 
 ---
 
+## 接入真实模型后发生了什么
+
+上面那张护栏表，是对着确定性 mock 建立和测量的。这是一个真实的局限，而把两个真实模型接进同一条流水
+线，正是这个局限暴露出来的方式。
+
+`scripts/run_provider_comparison.py` 对固定的 24 个已结案案例重新生成 brief，每个 composer 各跑一
+轮，packet、prompt、护栏完全相同。
+
+| | mock | `deepseek-v4-pro` | + 引用词表 | `glm-5-2` | + 引用词表 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 引用可解析率 % | 100.00 | 55.25 | 98.55 | 56.86 | 98.58 |
+| 无据结论率 % | 0.00 | 41.98 | 1.13 | 49.58 | 2.47 |
+| 被护栏丢弃的结论数 | 0 | 110 | 3 | 118 | 6 |
+| 弃答率 % | 8.33 | 87.50 | 0.00 | 87.50 | 0.00 |
+| 输出不可用 % | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+
+两个真实模型起步都只有约 55% 的引用可解析率，各自有一百多条结论被丢弃。原因不是编造事实，而是**词
+表**：system prompt 只用占位符示范了引用的*形状*（`signal.RULE_ID`），从未列出 packet 实际提供的
+键，于是两个模型都自己发明了一套 JSON-path 写法（`signals[0].rule_id`）。输出闸门把它们全部拒绝
+了——完全正确，而且是静默的，正如设计。把允许的键列进 packet 后，可解析率升到约 98.5%，弃答率归
+零，护栏本身一行没改。
+
+**mock 不可能发现这件事。** 它的引用由构造允许清单的同一个函数生成，因此在构造上就不可能把词表写
+错。它那个 100% 从来都不是"闸门对真实模型有效"的证据，只是"mock 违反不了它"的证据。这就是用替身测
+试护栏的诚实边界。
+
+这轮还确认了另一件事：推理模型的思维链计入 `max_tokens`，因此产品默认的 1,200 会把它们的 JSON 截
+断，使输出不可用率变成 100%。护栏把截断的 brief 当作"没有 brief"而不是"半个建议"来处理——这正是你想
+要的行为，同时也是一个必须改掉的配置默认值。
+
+那份报告里的"命中真值"一行不要当作模型能力读：mock 的建议和生成器的 `expected_action` 出自同一套领
+域推理，两者一致只说明内部自洽，不代表判断力。完整报告与全部限定条件见
+[reports/provider_comparison.md](reports/provider_comparison.md)。
+
+---
+
 ## 实测结果
 
 所有数字来自 `reports/evaluation.json`，由
@@ -445,6 +481,7 @@ python -m riskops brief CASE_0004520 # 某个案件已存的 AI 简报，JSON �
 python -m riskops decide CASE_0004520 --action hold --reason RC_SUSPECTED_ACCOUNT_TAKEOVER
 python -m riskops audit --tail 20   # 校验哈希链
 python -m riskops eval              # 重新生成本文件里的每一个数字
+python scripts/run_provider_comparison.py  # mock 与真实模型对比，需要 key
 python -m riskops eval --seeds 5    # ……以及跨 5 个生成世界的分布(约 5 分钟)
 python -m riskops export            # 把每张 mart 表导出为 CSV
 ```
